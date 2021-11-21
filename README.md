@@ -4,17 +4,25 @@ A python library for transmitting and receiving digital data over NBFM radio.
 ### digitalModulationTypes():
 #### Functions:
 > bpsk500(): Binary Pulse-Shift Keying at 500 baud.
+
 > bpsk1000(): Binary Pulse-Shift Keying at 1000 baud.
+
 > bfsk500(): Binary Frequency-Shift Keying at 500 baud.
+
 > bfsk1000(): Binary Frequency-Shift Keying at 1000 baud.
 ### digitalReceiver():
 #### Parameters:
 > digitalModulationType: (digitalModulationType) Type of digital modulation to listen for.
 > amplitudeStartThreshold: (int) Amplitude to detect start of training block
+
 > amplitudeEndThreshold: (int) Amplitude to detect end of data
+
 > recordingStartThreshold: (int) Amplitude to start auto-recording
+
 > recordingEndThreshold: (int) Amplitude to stop auto-recording
+
 > amplifierDeadzone: (int) Deadzone for amplification function
+
 > inputFramesPerBlock: (int) Input buffer size
 #### Functions:
 ##### rx():
@@ -30,6 +38,7 @@ A python library for transmitting and receiving digital data over NBFM radio.
 ### digitalTransmitter():
 #### Parameters:
 > digitalModulationType: (digitalModulationType) Type of digital modulation to transmit.
+
 > trainingSequenceOscillations: (int) Number of oscillations of the training sequence
 #### Functions:
 ##### tx():
@@ -40,6 +49,7 @@ A python library for transmitting and receiving digital data over NBFM radio.
 ##### txToWav():
 ###### Parameters:
 > data: (string) Data to transmit
+
 > filename: (string) Output filename
 ###### Returns:
 > None
