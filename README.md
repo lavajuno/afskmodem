@@ -13,6 +13,7 @@ A python library for transmitting and receiving digital data over NBFM radio.
 ### digitalReceiver():
 #### Parameters:
 > digitalModulationType: (digitalModulationType) Type of digital modulation to listen for.
+
 > amplitudeStartThreshold: (int) Amplitude to detect start of training block
 
 > amplitudeEndThreshold: (int) Amplitude to detect end of data
