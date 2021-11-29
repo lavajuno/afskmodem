@@ -1,6 +1,6 @@
 from nbfmmodem import digitalReceiver
 from nbfmmodem import digitalModulationTypes
-receiver = digitalReceiver(digitalModulationTypes.bpsk500())
+receiver = digitalReceiver(digitalModulationTypes.default())
 print("NBFMmodem RX Demo")
 while(True):
     print("Waiting for message...\n")
