@@ -30,12 +30,12 @@ A python library for transmitting and receiving digital data over NBFM radio.
 ###### Parameters:
 > timeout: (int) Recording timeout in seconds.
 ###### Returns:
-> (string) Received data
+> (bytes) Received data
 ##### rxFromWav():
 ###### Parameters:
 > filename: (string) Input filename
 ###### Returns:
-> (string) Received data
+> (bytes) Received data
 ### digitalTransmitter():
 #### Parameters:
 > digitalModulationType: (digitalModulationType) Type of digital modulation to transmit.
@@ -44,12 +44,12 @@ A python library for transmitting and receiving digital data over NBFM radio.
 #### Functions:
 ##### tx():
 ###### Parameters:
-> data: (string) Data to transmit
+> data: (bytes) Data to transmit
 ###### Returns:
 > None
 ##### txToWav():
 ###### Parameters:
-> data: (string) Data to transmit
+> data: (bytes) Data to transmit
 
 > filename: (string) Output filename
 ###### Returns:

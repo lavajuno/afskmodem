@@ -350,10 +350,10 @@ class digitalReceiver():
                 expFrames.append(struct.unpack("<h", sFrame)[0])
                 frameIter += 2
             nFrames = len(expFrames)
+
             startSample = self.__findStart(expFrames) # Recover the clock
 
-            # if no start sample could be found we can't decode
-            if(startSample == -1):
+            if(startSample == -1): # if no start sample could be found we can't decode
                 return ""
             
             chunkIter = int(self.unitTime) + startSample # Decode to bits (including training block)
@@ -382,22 +382,15 @@ class digitalReceiver():
                 zeroStreak = 0
         return(data[endTrainingIndex::])
 
-    # Convert bits to byte values.
-    def __getByteValsFromBits(self, binaryData):
+    # Convert bits to bytes
+    def __getBytesFromBits(self, binaryData):
         intData = []
         i = 0
         while(i < len(binaryData)):
             intData.append(int(binaryData[(i):(i+8)], 2))
             i += 8
-        return intData
-
-    # Convert byte values to ASCII text.
-    def __getTextFromByteVals(self, intData):
-        stringData = ""
-        for i in intData:
-            stringData += chr(i)
-        return stringData
-
+        return bytes(intData)
+    
     # Run error correction and remove all parity bits from bits data
     def __getSourceDataFromECC(self, data):
         dataBytes = []
@@ -410,24 +403,26 @@ class digitalReceiver():
             decodedBytes.append(self.ecc.hammingDecode(dataByte))
         output = "".join(decodedBytes)
         return output
-    
-    def rx(self, timeout=-1): # One call to receive data (timeout in seconds, disabled by default)
+
+    def rx(self, timeout=-1): # One call to receive bytes data (timeout in seconds, disabled by default)
         wavData = self.__autoRecord(self.recordingStartThreshold, self.recordingEndThreshold, timeout)
         bd = self.__getBitsFromWavData(wavData)
+        if(bd == ""): # if no good data
+            return b""
         bd = self.__trimTrainingBlock(bd)
         decodedBin = self.__getSourceDataFromECC(bd)
-        intData = self.__getByteValsFromBits(decodedBin)
-        stringData = self.__getTextFromByteVals(intData)
-        return stringData
+        bytesData = self.__getBytesFromBits(decodedBin)
+        return bytesData
     
-    def rxFromWav(self, filename): # One call to receive data from recording
+    def rxFromWav(self, filename): # One call to receive bytes data from recording
         wavData = self.__loadRawWavData(filename)
         bd = self.__getBitsFromWavData(wavData)
+        if(bd == ""): # if no good data
+            return b""
         bd = self.__trimTrainingBlock(bd)
         decodedBin = self.__getSourceDataFromECC(bd)
-        intData = self.__getByteValsFromBits(decodedBin)
-        stringData = self.__getTextFromByteVals(intData)
-        return stringData
+        bytesData = self.__getBytesFromBits(decodedBin)
+        return bytesData
 
 ################################################################################ TX TOOLS
 class digitalTransmitter():
@@ -445,27 +440,12 @@ class digitalTransmitter():
         self.txMark = iw.getTxMark()
         self.txSilence = iw.getTxSilence()
         self.ecc = hamming()
-    
-    # Get bits from a string
-    def __getBitsFromText(self, message):
-        bd = []
-        bBin = ""
 
-        # Convert each character in the message to bytes, then bits.
-        for i in message:
-            if(ord(i) > 255):
-                print("Invalid character '" + i + "' skipped.")
-            else:
-                bd.append(ord(i))
-        for i in bd:
-            bBin += '{0:08b}'.format(i)
-        return bBin
-
-    # Get bits from an array of integers
-    def __getBitsFromIntArray(self, intArray):
+    # Get bits from bytes
+    def __getBitsFromBytes(self, bytesIn):
         bBin = ""
-        for i in intArray:
-            bBin += '{0:08b}'.format(i)
+        for i in range(len(bytesIn)):
+            bBin += '{0:08b}'.format(bytesIn[i])
         return bBin
 
     # Encode bits to audio
@@ -513,7 +493,7 @@ class digitalTransmitter():
                 output = True
             )
             stream.write(data)
-            sleep(0.2) # let the player finish
+            sleep(0.1) # let the player finish
             stream.close()
             stream.stop_stream()
             pa.terminate()
@@ -525,18 +505,17 @@ class digitalTransmitter():
             f.setsampwidth(pyaudio.get_sample_size(self.format))
             f.setframerate(self.sampleRate)
             f.writeframes(data)
-    
-    def tx(self, data): # One call to send data (ASCII)
-        messageBits = self.__getBitsFromText(data)
+
+    def tx(self, data): # One call to send bytes data
+        messageBits = self.__getBitsFromBytes(data)
         eccBits = self.__insertECC(messageBits)
         trainingBlock = self.__generateTrainingBlock()
         txBits = trainingBlock + eccBits
-        
         oAudio = self.__encode(txBits)
         self.__playWavData(oAudio)
 
-    def txToWav(self, data, filename): # One call to record data (ASCII) to file
-        messageBits = self.__getBitsFromText(data)
+    def txToWav(self, data, filename): # One call to record bytes data to file
+        messageBits = self.__getBitsFromBytes(data)
         eccBits = self.__insertECC(messageBits)
         trainingBlock = self.__generateTrainingBlock()
         txBits = trainingBlock + eccBits
