@@ -64,9 +64,9 @@ class digitalModulationTypes():
     # Binary Frequency-Shift Keying (1000 baud)
     def bfsk1000():
         return "bpsk1000"
-    # Default (BPSK at 500 baud)
+    # Default (BFSK at 500 baud)
     def default():
-        return "bpsk500"
+        return "bfsk500"
     
     # Unit time in samples
     def getUnitTime(sampleRate, digitalModulationType):

@@ -1,6 +1,6 @@
 from nbfmmodem import digitalTransmitter
 from nbfmmodem import digitalModulationTypes
-transmitter = digitalTransmitter(digitalModulationTypes.bpsk500())
+transmitter = digitalTransmitter(digitalModulationTypes.default())
 print("NBFMmodem TX Demo")
 while True:
     print("Enter message string (ASCII):")
