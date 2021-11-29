@@ -16,6 +16,7 @@ x----------------------------------------------------------------------x
 import wave
 import struct
 import pyaudio
+from datetime import datetime
 from time import sleep
 
 ################################################################################ PROGRAM DEFAULTS
@@ -47,22 +48,22 @@ FORMAT = pyaudio.paInt16
 # Input+output channels (Almost all radios are mono)
 CHANNELS = 1
 #
-# Frames per buffer (Larger buffers reduce chance of skips)
-INPUT_FRAMES_PER_BLOCK = 2048
+# Frames per buffer for input
+INPUT_FRAMES_PER_BLOCK = 4096
 
 ################################################################################ DIGITAL MODULATION TYPES
 class digitalModulationTypes():
-    # Binary Pulse-Shift Keying (500 baud)
-    def bpsk500():
-        return "bpsk500"
     # Binary Frequency-Shift Keying (500 baud)
     def bfsk500():
         return "bfsk500"
-    # Binary Pulse-Shift Keying (1000 baud)
-    def bpsk1000():
-        return "bpsk1000"
+    # Binary Pulse-Shift Keying (500 baud)
+    def bpsk500():
+        return "bpsk500"
     # Binary Frequency-Shift Keying (1000 baud)
     def bfsk1000():
+        return "bpsk1000"
+    # Binary Pulse-Shift Keying (1000 baud)
+    def bpsk1000():
         return "bpsk1000"
     # Default (BFSK at 500 baud)
     def default():
@@ -85,7 +86,8 @@ class digitalModulationTypes():
 class idealWaves(): # Ideal waves for TX and RX
     def __init__(self, digitalModulationType = digitalModulationTypes.default()):
         self.digitalModulationType = digitalModulationType
-    
+
+    # Load wav data to int array
     def __loadWavData(self,filename):
         with wave.open(filename, "r") as f:
             sampleRate = f.getframerate()
@@ -96,6 +98,7 @@ class idealWaves(): # Ideal waves for TX and RX
                 expFrames.append(struct.unpack("<h", sFrame)[0])
             return expFrames
 
+    # Load wav data to byte array
     def __loadRawWavData(self,filename):
         with wave.open(filename, "r") as f:
             sampleRate = f.getframerate()
@@ -116,15 +119,23 @@ class idealWaves(): # Ideal waves for TX and RX
         return self.getRxMark() + self.getRxSpace()
 
 ################################################################################ HAMMING ECC
-class hamming():
+class hammingECC():
     def __init__(self, r = 4): # 4 default for per-byte ecc
         self.r = r
+        self.errorCount = 0
     # # of parity bits to be added to a bit string of a given length m (a byte gets 4)
     def getParityBitsAmt(self, data):
         for i in range(len(data)):
             if(2**i >= len(data) + i + 1):
                 return i
 
+    def initErrorCount(self): # Error count utils
+        self.errorCount = 0
+    def incrementErrorCount(self):
+        self.errorCount += 1
+    def getErrorCount(self):
+        return self.errorCount
+    
     # Pad the positions of parity bits with a logical 0
     def __padParityBitsPos(self, data):
         j = 0
@@ -184,6 +195,7 @@ class hamming():
         if(ePos == len(data)):
             return data
         else:
+            self.__incrementErrorCount()
             dataList = list(data)
             if(dataList[ePos] == "0"):
                 dataList[ePos] = "1"
@@ -233,7 +245,7 @@ class digitalReceiver():
         self.rxSpace = iw.getRxSpace()
         self.rxMark = iw.getRxMark()
         self.rxTraining = iw.getRxTraining()
-        self.ecc = hamming()
+        self.ecc = hammingECC()
     
     # Load raw wav data from file
     def __loadRawWavData(self,filename):
@@ -271,7 +283,6 @@ class digitalReceiver():
         stream = pa.open(format=self.format, channels=self.channels,
                 rate=self.sampleRate, input=True,
                 frames_per_buffer=self.inputFramesPerBlock)
-
         stream.read(self.inputFramesPerBlock) # Flush buffer
         listenerIter = 0
         while (True):
@@ -290,7 +301,6 @@ class digitalReceiver():
                     frames = stream.read(self.inputFramesPerBlock)
                     totFrames.append(frames)
                     chunkAmp = self.__quickAvgAmp(frames)
-
                 stream.stop_stream()
                 stream.close()
                 pa.terminate()
@@ -396,31 +406,34 @@ class digitalReceiver():
         dataBytes = []
         decodedBytes = []
         dataIter = 0
+        self.ecc.initErrorCount()
         while(dataIter < len(data) - 11):
             dataBytes.append(data[dataIter:dataIter+12])
             dataIter += 12
         for dataByte in dataBytes:
             decodedBytes.append(self.ecc.hammingDecode(dataByte))
         output = "".join(decodedBytes)
-        return output
-
-    def rx(self, timeout=-1): # One call to receive bytes data (timeout in seconds, disabled by default)
+        return output, self.ecc.getErrorCount()
+    
+    # One call to receive bytes data from default audio input (timeout in seconds, disabled by default)
+    def rx(self, timeout=-1):
         wavData = self.__autoRecord(self.recordingStartThreshold, self.recordingEndThreshold, timeout)
         bd = self.__getBitsFromWavData(wavData)
         if(bd == ""): # if no good data
             return b""
         bd = self.__trimTrainingBlock(bd)
-        decodedBin = self.__getSourceDataFromECC(bd)
+        decodedBin, errorCount = self.__getSourceDataFromECC(bd)
         bytesData = self.__getBytesFromBits(decodedBin)
         return bytesData
     
-    def rxFromWav(self, filename): # One call to receive bytes data from recording
+    # One call to receive bytes data from recording
+    def rxFromWav(self, filename): 
         wavData = self.__loadRawWavData(filename)
         bd = self.__getBitsFromWavData(wavData)
         if(bd == ""): # if no good data
             return b""
         bd = self.__trimTrainingBlock(bd)
-        decodedBin = self.__getSourceDataFromECC(bd)
+        decodedBin, errorCount = self.__getSourceDataFromECC(bd)
         bytesData = self.__getBytesFromBits(decodedBin)
         return bytesData
 
@@ -439,7 +452,7 @@ class digitalTransmitter():
         self.txSpace = iw.getTxSpace()
         self.txMark = iw.getTxMark()
         self.txSilence = iw.getTxSilence()
-        self.ecc = hamming()
+        self.ecc = hammingECC()
 
     # Get bits from bytes
     def __getBitsFromBytes(self, bytesIn):
@@ -506,7 +519,7 @@ class digitalTransmitter():
             f.setframerate(self.sampleRate)
             f.writeframes(data)
 
-    def tx(self, data): # One call to send bytes data
+    def tx(self, data): # One call to send bytes data over default audio output
         messageBits = self.__getBitsFromBytes(data)
         eccBits = self.__insertECC(messageBits)
         trainingBlock = self.__generateTrainingBlock()
