@@ -6,5 +6,5 @@ while True:
     print("Enter message string (ASCII):")
     userMessage = input()
     print("Transmitting... Est TX time " + str(transmitter.estTxTime(len(userMessage))) + " seconds.")
-    transmitter.tx(userMessage.encode("utf-8"))
+    transmitter.tx(userMessage.encode("ascii", "ignore"))
     print("Done. (CTRL-C to exit)\n")
