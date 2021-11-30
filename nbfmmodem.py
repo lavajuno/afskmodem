@@ -195,7 +195,7 @@ class hammingECC():
         if(ePos == len(data)):
             return data
         else:
-            self.__incrementErrorCount()
+            self.incrementErrorCount()
             dataList = list(data)
             if(dataList[ePos] == "0"):
                 dataList[ePos] = "1"
@@ -424,7 +424,7 @@ class digitalReceiver():
         bd = self.__trimTrainingBlock(bd)
         decodedBin, errorCount = self.__getSourceDataFromECC(bd)
         bytesData = self.__getBytesFromBits(decodedBin)
-        return bytesData
+        return bytesData, errorCount
     
     # One call to receive bytes data from recording
     def rxFromWav(self, filename): 
@@ -435,7 +435,7 @@ class digitalReceiver():
         bd = self.__trimTrainingBlock(bd)
         decodedBin, errorCount = self.__getSourceDataFromECC(bd)
         bytesData = self.__getBytesFromBits(decodedBin)
-        return bytesData
+        return bytesData, errorCount
 
 ################################################################################ TX TOOLS
 class digitalTransmitter():
