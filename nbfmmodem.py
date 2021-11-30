@@ -537,3 +537,44 @@ class digitalTransmitter():
     
     def estTxTime(self, dataLengthBytes): # est transmission time in seconds
         return int((dataLengthBytes * 12) / (self.sampleRate / self.unitTime) + 1)
+    
+class debug:
+    def testECC():
+        print("Running ECC Debug Test (Error pos from 0-11 for each byte value from 0-255)")
+        ecc = hammingECC()
+        for testIndex in range(256):
+            for errorIndex in range(12):
+                ecc.initErrorCount()
+                oBin = '{0:08b}'.format(testIndex)
+                rBin = ecc.hammingEncode(oBin)
+                lBin = list(rBin)
+                if(lBin[errorIndex] == "1"):
+                    lBin[errorIndex] = "0"
+                else:
+                    lBin[errorIndex] = "1"
+                eBin = "".join(lBin)
+                hBin = ecc.hammingDecode(eBin)
+                if(hBin != oBin):
+                    print("Error correction FAILED at byte val " + str(testIndex) + ", Error index " + str(errorIndex))
+                    break
+        print("All ECC tests passed.")
+
+    def testIdealWaves():
+        print("Testing ideal waves (loading all digital types)")
+        iw = idealWaves(digitalModulationTypes.bfsk500)
+        iw = idealWaves(digitalModulationTypes.bpsk500)
+        iw = idealWaves(digitalModulationTypes.bfsk1000)
+        iw = idealWaves(digitalModulationTypes.bpsk1000)
+        print("All ideal waves tests passed.")
+    
+    def testDigitalTransmitters():
+        print("Testing digital transmitter instantiation...")
+        dt = digitalTransmitter(digitalModulationTypes.bfsk500)
+        dt = digitalTransmitter(digitalModulationTypes.bpsk1000)
+        dt = digitalTransmitter(digitalModulationTypes.bfsk500)
+        dt = digitalTransmitter(digitalModulationTypes.bpsk1000)
+        print("All digital transmitter tests passed.")
+
+if(__name__ == "__main__"): # Run debug tests
+    debug.testECC()
+    debug.testIdealWaves()
