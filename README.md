@@ -62,15 +62,13 @@ A python library for transmitting and receiving digital data over NBFM radio.
 ## Examples:
 ### Sending a message:
 ```
-from nbfmmodem import digitalReceiver
-from nbfmmodem import digitalModulationTypes
-t = digitalTransmitter(digitalModulationTypes.bpsk500())
-t.tx("Hello World!")
+from nbfmmodem import digitalReceiver, digitalModulationTypes
+t = digitalTransmitter(digitalModulationTypes.bfsk500())
+t.tx("Hello World!".encode("utf-8"))
 ```
 ### Receiving a message:
 ```
-from nbfmmodem import digitalReceiver
-from nbfmmodem import digitalModulationTypes
-r = digitalReceiver(digitalModulationTypes.bpsk500())
-print(r.rx(30))
+from nbfmmodem import digitalReceiver, digitalModulationTypes
+r = digitalReceiver(digitalModulationTypes.bfsk500())
+print(r.rx().decode("utf-8"))
 ```
