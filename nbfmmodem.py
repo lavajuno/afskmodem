@@ -561,20 +561,30 @@ class debug:
 
     def testIdealWaves():
         print("Testing ideal waves (loading all digital types)")
-        iw = idealWaves(digitalModulationTypes.bfsk500)
-        iw = idealWaves(digitalModulationTypes.bpsk500)
-        iw = idealWaves(digitalModulationTypes.bfsk1000)
-        iw = idealWaves(digitalModulationTypes.bpsk1000)
+        iw = idealWaves(digitalModulationTypes.bfsk500())
+        iw = idealWaves(digitalModulationTypes.bpsk500())
+        iw = idealWaves(digitalModulationTypes.bfsk1000())
+        iw = idealWaves(digitalModulationTypes.bpsk1000())
         print("All ideal waves tests passed.")
     
     def testDigitalTransmitters():
         print("Testing digital transmitter instantiation...")
-        dt = digitalTransmitter(digitalModulationTypes.bfsk500)
-        dt = digitalTransmitter(digitalModulationTypes.bpsk1000)
-        dt = digitalTransmitter(digitalModulationTypes.bfsk500)
-        dt = digitalTransmitter(digitalModulationTypes.bpsk1000)
+        dt = digitalTransmitter(digitalModulationTypes.bfsk500())
+        dt = digitalTransmitter(digitalModulationTypes.bpsk1000())
+        dt = digitalTransmitter(digitalModulationTypes.bfsk500())
+        dt = digitalTransmitter(digitalModulationTypes.bpsk1000())
         print("All digital transmitter tests passed.")
+
+    def testDigitalReceivers():
+        print("Testing digital receiver instantiation...")
+        dr = digitalReceiver(digitalModulationTypes.bfsk500())
+        dr = digitalReceiver(digitalModulationTypes.bpsk1000())
+        dr = digitalReceiver(digitalModulationTypes.bfsk500())
+        dr = digitalReceiver(digitalModulationTypes.bpsk1000())
+        print("All digital receiver tests passed.")
 
 if(__name__ == "__main__"): # Run debug tests
     debug.testECC()
     debug.testIdealWaves()
+    debug.testDigitalTransmitters()
+    debug.testDigitalReceivers()

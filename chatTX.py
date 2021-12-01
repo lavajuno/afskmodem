@@ -6,7 +6,7 @@ def getDateAndTime(): # Full time and date
         now = datetime.now()
         return now.strftime('%Y-%m-%d %H:%M:%S')
 
-transmitter = digitalTransmitter(digitalModulationTypes.default(), 500)
+transmitter = digitalTransmitter(digitalModulationTypes.default())
 print("NBFMmodem chatTX demo")
 print("Enter chat nickname/callsign:")
 callsign = str(input())
