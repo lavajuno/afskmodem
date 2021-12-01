@@ -420,7 +420,7 @@ class digitalReceiver():
         wavData = self.__autoRecord(self.recordingStartThreshold, self.recordingEndThreshold, timeout)
         bd = self.__getBitsFromWavData(wavData)
         if(bd == ""): # if no good data
-            return b""
+            return b"", 0
         bd = self.__trimTrainingBlock(bd)
         decodedBin, errorCount = self.__getSourceDataFromECC(bd)
         bytesData = self.__getBytesFromBits(decodedBin)
