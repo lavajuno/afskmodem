@@ -72,12 +72,12 @@ A python library for transmitting and receiving digital data over NBFM radio.
 ### Sending a message:
 ```
 from nbfmmodem import digitalReceiver, digitalModulationTypes
-t = digitalTransmitter(digitalModulationTypes.bfsk500())
+t = digitalTransmitter(digitalModulationType.bfsk500())
 t.tx("Hello World!".encode("utf-8"))
 ```
 ### Receiving a message:
 ```
 from nbfmmodem import digitalReceiver, digitalModulationTypes
-r = digitalReceiver(digitalModulationTypes.bfsk500())
+r = digitalReceiver(digitalModulationType.bfsk500())
 print(r.rx().decode("utf-8"))
 ```
