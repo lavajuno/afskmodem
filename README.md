@@ -1,7 +1,7 @@
 # nbfmmodem
 A python library for transmitting and receiving digital data over NBFM radio.
 ## Classes:
-### digitalModulationType():
+### digitalModulationTypes():
 #### Functions:
 > bfsk500(): Binary Frequency-Shift Keying at 500 baud. (RECOMMENDED IN MOST CASES)
 
@@ -13,7 +13,7 @@ A python library for transmitting and receiving digital data over NBFM radio.
 
 ### digitalReceiver():
 #### Parameters:
-> digitalModulationType: (required, digitalModulationType) Type of digital modulation to listen for.
+> digitalModulationType: (required, digitalModulationTypes) Type of digital modulation to listen for.
 
 > amplitudeStartThreshold: (optional, int, 0-32768) Amplitude to detect start of training block
 
@@ -42,7 +42,7 @@ A python library for transmitting and receiving digital data over NBFM radio.
 
 ### digitalTransmitter():
 #### Parameters:
-> digitalModulationType: (required, digitalModulationType) Type of digital modulation to transmit.
+> digitalModulationType: (required, digitalModulationTypes) Type of digital modulation to transmit.
 
 > trainingSequenceOscillations: (optional, int) Number of oscillations of the training sequence
 
@@ -72,12 +72,12 @@ A python library for transmitting and receiving digital data over NBFM radio.
 ### Sending a message:
 ```
 from nbfmmodem import digitalReceiver, digitalModulationTypes
-t = digitalTransmitter(digitalModulationType.bfsk500())
+t = digitalTransmitter(digitalModulationTypes.bfsk500())
 t.tx("Hello World!".encode("utf-8"))
 ```
 ### Receiving a message:
 ```
 from nbfmmodem import digitalReceiver, digitalModulationTypes
-r = digitalReceiver(digitalModulationType.bfsk500())
+r = digitalReceiver(digitalModulationTypes.bfsk500())
 print(r.rx().decode("utf-8"))
 ```
