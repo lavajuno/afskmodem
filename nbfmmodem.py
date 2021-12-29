@@ -60,7 +60,7 @@ class digitalModulationTypes():
         return "bpsk500"
     # Binary Frequency-Shift Keying (1000 baud)
     def bfsk1000():
-        return "bpsk1000"
+        return "bfsk1000"
     # Binary Phase-Shift Keying (1000 baud)
     def bpsk1000():
         return "bpsk1000"
