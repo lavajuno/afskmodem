@@ -1,7 +1,7 @@
 # nbfmmodem
 A python library for transmitting and receiving digital data over NBFM radio.
 ## Classes:
-### digitalModulationTypes():
+### digitalModulationType():
 #### Functions:
 > bfsk500(): Binary Frequency-Shift Keying at 500 baud. (RECOMMENDED IN MOST CASES)
 
@@ -15,17 +15,16 @@ A python library for transmitting and receiving digital data over NBFM radio.
 #### Parameters:
 > digitalModulationType: (digitalModulationType) Type of digital modulation to listen for.
 
-> amplitudeStartThreshold: (int) Amplitude to detect start of training block
+> amplitudeStartThreshold: (int, 0-32768) Amplitude to detect start of training block
 
-> amplitudeEndThreshold: (int) Amplitude to detect end of data
+> amplitudeEndThreshold: (int, 0-32768) Amplitude to detect end of data
 
-> recordingStartThreshold: (int) Amplitude to start auto-recording
+> recordingStartThreshold: (int, 0-32768) Amplitude to start auto-recording
 
-> recordingEndThreshold: (int) Amplitude to stop auto-recording
+> recordingEndThreshold: (int, 0-32768) Amplitude to stop auto-recording
 
-> amplifierDeadzone: (int) Deadzone for amplification function
+> amplifierDeadzone: (int, 0-32768) Deadzone for amplification function
 
-> inputFramesPerBlock: (int) Input buffer size
 #### Functions:
 ##### rx():
 ###### Parameters:
