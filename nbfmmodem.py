@@ -38,13 +38,13 @@ RECORDING_END_THRESHOLD = 200
 # Amplifier function deadzone (0-32768, Default 1000)
 AMPLIFIER_DEADZONE = 1000
 #
-# How many samples per second we are recording (DO NOT CHANGE, sound card resamples for us)
+# How many samples per second we are recording (DO NOT CHANGE, sound card resamples if needed)
 SAMPLE_RATE = 48000
 #
-# Wav format (DO NOT CHANGE, 16-bit signed is the most common standard)
+# Wav format (DO NOT CHANGE, sound card handles format conversion if needed)
 FORMAT = pyaudio.paInt16
 #
-# Input+output channels (Almost all radios are mono)
+# Input+output channels (DO NOT CHANGE, sound card handles stereo conversion if needed)
 CHANNELS = 1
 #
 # Frames per buffer for input
