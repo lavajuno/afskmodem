@@ -24,16 +24,16 @@ from time import sleep
 # How many oscillations we transmit in a training sequence (Recommended 200-300, Default 200)
 TRAINING_SEQUENCE_OSCILLATIONS = 200
 #
-# The amplitude required to recognize the training sequence (0-32768, Default 20000)
+# Instant amplitude required to recognize the training sequence (0-32768, Default 20000)
 AMPLITUDE_START_THRESHOLD = 20000
 #
 # Chunk amplitude at which decoding stops (0-32768, Default 12000)
 AMPLITUDE_END_THRESHOLD = 12000
 #
-# The amplitude required to start recording (0-32768, Default 400) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
+# Chunk amplitude required to start recording (0-32768, Default 400) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
 RECORDING_START_THRESHOLD = 400
 #
-# The amplitude required to stop recording (0-32768, Default 200) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
+# Chunk amplitude required to stop recording (0-32768, Default 200) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
 RECORDING_END_THRESHOLD = 200
 #
 # Amplifier function deadzone (0-32768, Default 100)
@@ -52,17 +52,17 @@ CHANNELS = 1
 INPUT_FRAMES_PER_BLOCK = 4096
 
 ################################################################################ DIGITAL MODULATION TYPES
-class digitalModulationTypes():
+class digitalModulationType():
     # Binary Frequency-Shift Keying (500 baud)
     def bfsk500():
         return "bfsk500"
-    # Binary Pulse-Shift Keying (500 baud)
+    # Binary Phase-Shift Keying (500 baud)
     def bpsk500():
         return "bpsk500"
     # Binary Frequency-Shift Keying (1000 baud)
     def bfsk1000():
         return "bpsk1000"
-    # Binary Pulse-Shift Keying (1000 baud)
+    # Binary Phase-Shift Keying (1000 baud)
     def bpsk1000():
         return "bpsk1000"
     # Default (BFSK at 500 baud)
@@ -84,7 +84,7 @@ class digitalModulationTypes():
         
 ################################################################################ IDEAL WAVES
 class idealWaves(): # Ideal waves for TX and RX
-    def __init__(self, digitalModulationType = digitalModulationTypes.default()):
+    def __init__(self, digitalModulationType = digitalModulationType.default()):
         self.digitalModulationType = digitalModulationType
 
     # Load wav data to int array
@@ -221,13 +221,12 @@ class hammingECC():
 ################################################################################ RX TOOLS
 class digitalReceiver():
     def __init__(self,
-    digitalModulationType = digitalModulationTypes.default(),    
+    digitalModulationType = digitalModulationType.default(),    
     amplitudeStartThreshold = AMPLITUDE_START_THRESHOLD,
     amplitudeEndThreshold = AMPLITUDE_END_THRESHOLD,
     recordingStartThreshold = RECORDING_START_THRESHOLD,
     recordingEndThreshold = RECORDING_END_THRESHOLD,
-    amplifierDeadzone = AMPLIFIER_DEADZONE,
-    inputFramesPerBlock = INPUT_FRAMES_PER_BLOCK):
+    amplifierDeadzone = AMPLIFIER_DEADZONE):
         self.digitalModulationType = digitalModulationType
         self.amplitudeStartThreshold = amplitudeStartThreshold
         self.amplitudeEndThreshold = amplitudeEndThreshold
@@ -237,8 +236,8 @@ class digitalReceiver():
         self.sampleRate = SAMPLE_RATE
         self.format = FORMAT
         self.channels = CHANNELS
-        self.unitTime = digitalModulationTypes.getUnitTime(self.sampleRate, self.digitalModulationType)
-        self.inputFramesPerBlock = inputFramesPerBlock
+        self.unitTime = digitalModulationType.getUnitTime(self.sampleRate, self.digitalModulationType)
+        self.inputFramesPerBlock = INPUT_FRAMES_PER_BLOCK
         self.startFreqScanJump = int(self.unitTime * 64)
         self.startFreqScanWidth = int(self.unitTime * 16)
         iw = idealWaves(digitalModulationType = self.digitalModulationType)
@@ -440,14 +439,14 @@ class digitalReceiver():
 ################################################################################ TX TOOLS
 class digitalTransmitter():
     def __init__(self, 
-    digitalModulationType = digitalModulationTypes.default(),
+    digitalModulationType = digitalModulationType.default(),
     trainingSequenceOscillations = TRAINING_SEQUENCE_OSCILLATIONS):
         self.digitalModulationType = digitalModulationType
         self.trainingSequenceOscillations = trainingSequenceOscillations
         self.sampleRate = SAMPLE_RATE
         self.format = FORMAT
         self.channels = CHANNELS
-        self.unitTime = digitalModulationTypes.getUnitTime(self.sampleRate, self.digitalModulationType)
+        self.unitTime = digitalModulationType.getUnitTime(self.sampleRate, self.digitalModulationType)
         iw = idealWaves(digitalModulationType = self.digitalModulationType)
         self.txSpace = iw.getTxSpace()
         self.txMark = iw.getTxMark()
@@ -561,26 +560,26 @@ class debug:
 
     def testIdealWaves():
         print("Testing ideal waves (loading all digital types)")
-        iw = idealWaves(digitalModulationTypes.bfsk500())
-        iw = idealWaves(digitalModulationTypes.bpsk500())
-        iw = idealWaves(digitalModulationTypes.bfsk1000())
-        iw = idealWaves(digitalModulationTypes.bpsk1000())
+        iw = idealWaves(digitalModulationType.bfsk500())
+        iw = idealWaves(digitalModulationType.bpsk500())
+        iw = idealWaves(digitalModulationType.bfsk1000())
+        iw = idealWaves(digitalModulationType.bpsk1000())
         print("All ideal waves tests passed.")
     
     def testDigitalTransmitters():
         print("Testing digital transmitter instantiation...")
-        dt = digitalTransmitter(digitalModulationTypes.bfsk500())
-        dt = digitalTransmitter(digitalModulationTypes.bpsk1000())
-        dt = digitalTransmitter(digitalModulationTypes.bfsk500())
-        dt = digitalTransmitter(digitalModulationTypes.bpsk1000())
+        dt = digitalTransmitter(digitalModulationType.bfsk500())
+        dt = digitalTransmitter(digitalModulationType.bpsk1000())
+        dt = digitalTransmitter(digitalModulationType.bfsk500())
+        dt = digitalTransmitter(digitalModulationType.bpsk1000())
         print("All digital transmitter tests passed.")
 
     def testDigitalReceivers():
         print("Testing digital receiver instantiation...")
-        dr = digitalReceiver(digitalModulationTypes.bfsk500())
-        dr = digitalReceiver(digitalModulationTypes.bpsk1000())
-        dr = digitalReceiver(digitalModulationTypes.bfsk500())
-        dr = digitalReceiver(digitalModulationTypes.bpsk1000())
+        dr = digitalReceiver(digitalModulationType.bfsk500())
+        dr = digitalReceiver(digitalModulationType.bpsk1000())
+        dr = digitalReceiver(digitalModulationType.bfsk500())
+        dr = digitalReceiver(digitalModulationType.bpsk1000())
         print("All digital receiver tests passed.")
 
 if(__name__ == "__main__"): # Run debug tests
