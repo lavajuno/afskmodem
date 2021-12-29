@@ -16,7 +16,6 @@ x----------------------------------------------------------------------x
 import wave
 import struct
 import pyaudio
-from datetime import datetime
 from time import sleep
 
 ################################################################################ PROGRAM DEFAULTS
@@ -36,7 +35,7 @@ RECORDING_START_THRESHOLD = 400
 # Chunk amplitude required to stop recording (0-32768, Default 200) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
 RECORDING_END_THRESHOLD = 200
 #
-# Amplifier function deadzone (0-32768, Default 100)
+# Amplifier function deadzone (0-32768, Default 1000)
 AMPLIFIER_DEADZONE = 1000
 #
 # How many samples per second we are recording (DO NOT CHANGE, sound card resamples for us)
