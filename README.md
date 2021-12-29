@@ -3,13 +3,14 @@ A python library for transmitting and receiving digital data over NBFM radio.
 ## Classes:
 ### digitalModulationTypes():
 #### Functions:
-> bpsk500(): Binary Pulse-Shift Keying at 500 baud.
-
-> bpsk1000(): Binary Pulse-Shift Keying at 1000 baud.
-
-> bfsk500(): Binary Frequency-Shift Keying at 500 baud.
+> bfsk500(): Binary Frequency-Shift Keying at 500 baud. (RECOMMENDED IN MOST CASES)
 
 > bfsk1000(): Binary Frequency-Shift Keying at 1000 baud.
+
+> bpsk500(): Binary Phase-Shift Keying at 500 baud.
+
+> bpsk1000(): Binary Phase-Shift Keying at 1000 baud.
+
 ### digitalReceiver():
 #### Parameters:
 > digitalModulationType: (digitalModulationType) Type of digital modulation to listen for.
