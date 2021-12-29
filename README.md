@@ -13,52 +13,61 @@ A python library for transmitting and receiving digital data over NBFM radio.
 
 ### digitalReceiver():
 #### Parameters:
-> digitalModulationType: (digitalModulationType) Type of digital modulation to listen for.
+> digitalModulationType: (required, digitalModulationType) Type of digital modulation to listen for.
 
-> amplitudeStartThreshold: (int, 0-32768) Amplitude to detect start of training block
+> amplitudeStartThreshold: (optional, int, 0-32768) Amplitude to detect start of training block
 
-> amplitudeEndThreshold: (int, 0-32768) Amplitude to detect end of data
+> amplitudeEndThreshold: (optional, int, 0-32768) Amplitude to detect end of data
 
-> recordingStartThreshold: (int, 0-32768) Amplitude to start auto-recording
+> recordingStartThreshold: (optional, int, 0-32768) Amplitude to start auto-recording
 
-> recordingEndThreshold: (int, 0-32768) Amplitude to stop auto-recording
+> recordingEndThreshold: (optional, int, 0-32768) Amplitude to stop auto-recording
 
-> amplifierDeadzone: (int, 0-32768) Deadzone for amplification function
+> amplifierDeadzone: (optional, int, 0-32768) Deadzone for amplification function
 
 #### Functions:
 ##### rx():
 ###### Parameters:
 > timeout: (int) Recording timeout in seconds.
+
 ###### Returns:
 > (bytes) Received data
+
 ##### rxFromWav():
 ###### Parameters:
-> filename: (string) Input filename
+> filename: (required, string) Input filename
+
 ###### Returns:
 > (bytes) Received data
+
 ### digitalTransmitter():
 #### Parameters:
-> digitalModulationType: (digitalModulationType) Type of digital modulation to transmit.
+> digitalModulationType: (required, digitalModulationType) Type of digital modulation to transmit.
 
-> trainingSequenceOscillations: (int) Number of oscillations of the training sequence
+> trainingSequenceOscillations: (optional, int) Number of oscillations of the training sequence
+
 #### Functions:
 ##### tx():
 ###### Parameters:
-> data: (bytes) Data to transmit
+> data: (required, bytes) Data to transmit
 ###### Returns:
 > None
 ##### txToWav():
 ###### Parameters:
-> data: (bytes) Data to transmit
+> data: (required, bytes) Data to transmit
 
-> filename: (string) Output filename
+> filename: (required, string) Output filename
+
 ###### Returns:
 > None
+
 ##### estTxTime():
 ###### Parameters:
-> dataLengthBytes: (int) Data length in bytes
+> dataLengthBytes: (required, int) Data length in bytes
+
 ###### Returns:
 > (int) Estimated transmission time in seconds.
+
 ## Examples:
 ### Sending a message:
 ```
