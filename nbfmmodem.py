@@ -24,10 +24,10 @@ from time import sleep
 TRAINING_SEQUENCE_OSCILLATIONS = 200
 #
 # Instant amplitude required to recognize the training sequence (0-32768, Default 20000)
-AMPLITUDE_START_THRESHOLD = 20000
+AMPLITUDE_START_THRESHOLD = 16000
 #
 # Chunk amplitude at which decoding stops (0-32768, Default 12000)
-AMPLITUDE_END_THRESHOLD = 12000
+AMPLITUDE_END_THRESHOLD = 8000
 #
 # Chunk amplitude required to start recording (0-32768, Default 400) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
 RECORDING_START_THRESHOLD = 400
