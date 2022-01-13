@@ -1,17 +1,8 @@
-######################################################################################################################## <- 120 COL STD
-################################################################################ <- 80 COL SM STD
 """
-x----------------------------------------------------------------------x
-|    _   _ ____  ______ __  __                     _                   |
-|   | \ | |  _ \|  ____|  \/  |                   | |                  |
-|   |  \| | |_) | |__  | \  / |_ __ ___   ___   __| | ___ _ __ ___     |
-|   | . ` |  _ <|  __| | |\/| | '_ ` _ \ / _ \ / _` |/ _ \ '_ ` _ \    |
-|   | |\  | |_) | |    | |  | | | | | | | (_) | (_| |  __/ | | | | |   |
-|   |_| \_|____/|_|    |_|  |_|_| |_| |_|\___/ \__,_|\___|_| |_| |_|   |
-|                                                                      |
-|                        Version 0.1 (Pre-release)                     |
-|                 https://jvmeifert.github.io/nbfmmodem                |
-x----------------------------------------------------------------------x
+x---------------------------------------x
+| NBFMmodem v0.1                        |
+| https://jvmeifert.github.io/nbfmmodem |
+x---------------------------------------x
 """
 import wave
 import struct
@@ -20,13 +11,13 @@ from time import sleep
 
 ################################################################################ PROGRAM DEFAULTS
 #
-# How many oscillations we transmit in a training sequence (Recommended 200-300, Default 200)
-TRAINING_SEQUENCE_OSCILLATIONS = 200
+# How many oscillations we transmit in a training sequence (Recommended 128-256, Default 128)
+TRAINING_SEQUENCE_OSCILLATIONS = 128
 #
-# Instant amplitude required to recognize the training sequence (0-32768, Default 20000)
+# Instant amplitude required to recognize the training sequence (0-32768, Default 16000)
 AMPLITUDE_START_THRESHOLD = 16000
 #
-# Chunk amplitude at which decoding stops (0-32768, Default 12000)
+# Chunk amplitude at which decoding stops (0-32768, Default 8000)
 AMPLITUDE_END_THRESHOLD = 8000
 #
 # Chunk amplitude required to start recording (0-32768, Default 400) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
@@ -105,15 +96,15 @@ class idealWaves(): # Ideal waves for TX and RX
             return f.readframes(nFrames)
     
     def getTxSilence(self): # Silence (200ms) to pad output with for TX
-        return self.__loadRawWavData("wav-samples/_.wav")
+        return self.__loadRawWavData("ideal_waves/_.wav")
     def getTxSpace(self): # Space tone as bytes for TX
-        return self.__loadRawWavData("wav-samples/" + self.digitalModulationType + "/0.wav")
+        return self.__loadRawWavData("ideal_waves/" + self.digitalModulationType + "/0.wav")
     def getTxMark(self): # Mark tone as bytes for TX
-        return self.__loadRawWavData("wav-samples/" + self.digitalModulationType + "/1.wav")
+        return self.__loadRawWavData("ideal_waves/" + self.digitalModulationType + "/1.wav")
     def getRxSpace(self): # Space tone as int array for RX
-        return self.__loadWavData("wav-samples/" + self.digitalModulationType + "/0.wav")
+        return self.__loadWavData("ideal_waves/" + self.digitalModulationType + "/0.wav")
     def getRxMark(self): # Mark tone as int array for RX
-        return self.__loadWavData("wav-samples/" + self.digitalModulationType + "/1.wav")
+        return self.__loadWavData("ideal_waves/" + self.digitalModulationType + "/1.wav")
     def getRxTraining(self): # Ideal training sequence oscillation for RX clock recovery
         return self.getRxMark() + self.getRxSpace()
 
@@ -534,55 +525,4 @@ class digitalTransmitter():
         self.__saveWavFile(oAudio, filename)
     
     def estTxTime(self, dataLengthBytes): # est transmission time in seconds
-        return int((dataLengthBytes * 12) / (self.sampleRate / self.unitTime) + 1)
-    
-class debug:
-    def testECC():
-        print("Running ECC Debug Test (Error pos from 0-11 for each byte value from 0-255)")
-        ecc = hammingECC()
-        for testIndex in range(256):
-            for errorIndex in range(12):
-                ecc.initErrorCount()
-                oBin = '{0:08b}'.format(testIndex)
-                rBin = ecc.hammingEncode(oBin)
-                lBin = list(rBin)
-                if(lBin[errorIndex] == "1"):
-                    lBin[errorIndex] = "0"
-                else:
-                    lBin[errorIndex] = "1"
-                eBin = "".join(lBin)
-                hBin = ecc.hammingDecode(eBin)
-                if(hBin != oBin):
-                    print("Error correction FAILED at byte val " + str(testIndex) + ", Error index " + str(errorIndex))
-                    break
-        print("All ECC tests passed.")
-
-    def testIdealWaves():
-        print("Testing ideal waves (loading all digital types)")
-        iw = idealWaves(digitalModulationTypes.bfsk500())
-        iw = idealWaves(digitalModulationTypes.bpsk500())
-        iw = idealWaves(digitalModulationTypes.bfsk1000())
-        iw = idealWaves(digitalModulationTypes.bpsk1000())
-        print("All ideal waves tests passed.")
-    
-    def testDigitalTransmitters():
-        print("Testing digital transmitter instantiation...")
-        dt = digitalTransmitter(digitalModulationTypes.bfsk500())
-        dt = digitalTransmitter(digitalModulationTypes.bpsk1000())
-        dt = digitalTransmitter(digitalModulationTypes.bfsk500())
-        dt = digitalTransmitter(digitalModulationTypes.bpsk1000())
-        print("All digital transmitter tests passed.")
-
-    def testDigitalReceivers():
-        print("Testing digital receiver instantiation...")
-        dr = digitalReceiver(digitalModulationTypes.bfsk500())
-        dr = digitalReceiver(digitalModulationTypes.bpsk1000())
-        dr = digitalReceiver(digitalModulationTypes.bfsk500())
-        dr = digitalReceiver(digitalModulationTypes.bpsk1000())
-        print("All digital receiver tests passed.")
-
-if(__name__ == "__main__"): # Run debug tests
-    debug.testECC()
-    debug.testIdealWaves()
-    debug.testDigitalTransmitters()
-    debug.testDigitalReceivers()
+        return (dataLengthBytes * 12) / (self.sampleRate / self.unitTime)

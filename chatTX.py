@@ -14,6 +14,6 @@ while True:
     print("Enter message string (ASCII):")
     userMessage = getDateAndTime() + " [" + callsign + "] "
     userMessage += input()
-    print("Transmitting... Est TX time " + str(transmitter.estTxTime(len(userMessage))) + " seconds.")
+    print("Transmitting...")
     transmitter.tx(userMessage.encode("utf-8"))
     print("Done. (CTRL-C to exit)\n")
