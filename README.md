@@ -1,15 +1,11 @@
-# nbfmmodem
-A python library for transmitting and receiving digital data over NBFM radio.
+# afskmodem
+A python library for transmitting and receiving digital data with Audio Frequency-Shift Keying
 ## Classes:
 ### digitalModulationTypes():
 #### Functions:
-> bfsk500(): Binary Frequency-Shift Keying at 500 baud. (RECOMMENDED IN MOST CASES)
+> afsk500(): Audio Frequency-Shift Keying at 500 baud. (RECOMMENDED IN MOST CASES)
 
-> bfsk1000(): Binary Frequency-Shift Keying at 1000 baud.
-
-> bpsk500(): Binary Phase-Shift Keying at 500 baud.
-
-> bpsk1000(): Binary Phase-Shift Keying at 1000 baud.
+> afsk1000(): Audio Frequency-Shift Keying at 1000 baud.
 
 ### digitalReceiver():
 #### Parameters:
@@ -63,21 +59,21 @@ A python library for transmitting and receiving digital data over NBFM radio.
 
 ##### estTxTime():
 ###### Parameters:
-> dataLengthBytes: (required, int) Data length in bytes
+> dataLen: (required, int) Data length in bytes
 
 ###### Returns:
-> (int) Estimated transmission time in seconds.
+> (double) Estimated transmission time in seconds.
 
 ## Examples:
 ### Sending a message:
 ```
-from nbfmmodem import digitalReceiver, digitalModulationTypes
-t = digitalTransmitter(digitalModulationTypes.bfsk500())
-t.tx("Hello World!".encode("utf-8"))
+from afskmodem import digitalTransmitter, digitalModulationTypes
+t = digitalTransmitter(digitalModulationTypes.afsk500())
+t.tx("Hello World!".encode("ascii", "ignore"))
 ```
 ### Receiving a message:
 ```
-from nbfmmodem import digitalReceiver, digitalModulationTypes
-r = digitalReceiver(digitalModulationTypes.bfsk500())
-print(r.rx().decode("utf-8"))
+from afskmodem import digitalReceiver, digitalModulationTypes
+r = digitalReceiver(digitalModulationTypes.afsk500())
+print(r.rx().decode("ascii", "ignore"))
 ```
