@@ -13,8 +13,8 @@ from time import sleep
 
 # USER-CONFIGURABLE PARAMETERS: Although these should work fine as-is, fine-tuning them will not affect functionality.
 #
-# How many oscillations we transmit in a training sequence (Recommended 128-256, Default 128)
-TRAINING_SEQUENCE_OSCILLATIONS = 128
+# How many oscillations we transmit in a training sequence (Recommended 192-384, Default 192)
+TRAINING_SEQUENCE_OSCILLATIONS = 192
 #
 # Instant amplitude required to recognize the training sequence (0-32768, Default 16000)
 AMPLITUDE_START_THRESHOLD = 16000
