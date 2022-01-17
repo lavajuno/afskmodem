@@ -1,5 +1,5 @@
-from nbfmmodem import digitalTransmitter
-from nbfmmodem import digitalModulationTypes
+from afskmodem import digitalTransmitter
+from afskmodem import digitalModulationTypes
 transmitter = digitalTransmitter(digitalModulationTypes.default())
 print("NBFMmodem TX Demo")
 while True:

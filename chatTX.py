@@ -1,5 +1,5 @@
-from nbfmmodem import digitalTransmitter
-from nbfmmodem import digitalModulationTypes
+from afskmodem import digitalTransmitter
+from afskmodem import digitalModulationTypes
 from datetime import datetime
 
 def getDateAndTime(): # Full time and date
