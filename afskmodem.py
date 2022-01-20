@@ -16,20 +16,20 @@ from time import sleep
 # How many oscillations we transmit in a training sequence (Recommended 192-384, Default 192)
 TRAINING_SEQUENCE_OSCILLATIONS = 192
 #
-# Instant amplitude required to recognize the training sequence (0-32768, Default 16000)
-AMPLITUDE_START_THRESHOLD = 16000
+# Instant amplitude required to recognize the training sequence (0-32768, Default 16384)
+AMPLITUDE_START_THRESHOLD = 16384
 #
-# Chunk amplitude at which decoding stops (0-32768, Default 8000)
-AMPLITUDE_END_THRESHOLD = 8000
+# Chunk amplitude at which decoding stops (0-32768, Default 8192)
+AMPLITUDE_END_THRESHOLD = 8192
 #
-# Chunk amplitude required to start recording (0-32768, Default 400) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
-RECORDING_START_THRESHOLD = 400
+# Chunk amplitude required to start recording (0-32768, Default 4096) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
+RECORDING_START_THRESHOLD = 4096
 #
-# Chunk amplitude required to stop recording (0-32768, Default 200) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
-RECORDING_END_THRESHOLD = 200
+# Chunk amplitude required to stop recording (0-32768, Default 2048) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
+RECORDING_END_THRESHOLD = 2048
 #
-# Amplifier function deadzone (0-32768, Default 1000)
-AMPLIFIER_DEADZONE = 1000
+# Amplifier function deadzone (0-32768, Default 1024)
+AMPLIFIER_DEADZONE = 1024
 
 # SYSTEM PARAMETERS: DO NOT CHANGE THESE!
 #
