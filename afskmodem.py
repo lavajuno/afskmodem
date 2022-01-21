@@ -265,7 +265,7 @@ class digitalReceiver():
                 stream.stop_stream()
                 stream.close()
                 pa.terminate()
-                return ""
+                return b''
             
             totFrames = []
             frames = stream.read(INPUT_FRAMES_PER_BLOCK) # Record and sample
