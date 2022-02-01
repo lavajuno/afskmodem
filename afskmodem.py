@@ -1,6 +1,6 @@
 """
 x---------------------------------------x
-| AFSKmodem v1.0                        |
+| AFSKmodem - Accessible Digital Radio  |
 | https://jvmeifert.github.io/afskmodem |
 x---------------------------------------x
 """
@@ -13,8 +13,8 @@ from time import sleep
 
 # USER-CONFIGURABLE PARAMETERS: Although these should work fine as-is, fine-tuning them will not affect functionality.
 #
-# How many oscillations we transmit in a training sequence (Recommended 192-384, Default 192)
-TRAINING_SEQUENCE_OSCILLATIONS = 192
+# Training sequence time (in seconds)
+TRAINING_SEQUENCE_TIME = 0.5
 #
 # Instant amplitude required to recognize the training sequence (0-32768, Default 16384)
 AMPLITUDE_START_THRESHOLD = 16384
@@ -22,11 +22,11 @@ AMPLITUDE_START_THRESHOLD = 16384
 # Chunk amplitude at which decoding stops (0-32768, Default 8192)
 AMPLITUDE_END_THRESHOLD = 8192
 #
-# Chunk amplitude required to start recording (0-32768, Default 4096) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
-RECORDING_START_THRESHOLD = 4096
+# Chunk amplitude required to start recording (0-32768, Default 8192) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
+RECORDING_START_THRESHOLD = 8192
 #
-# Chunk amplitude required to stop recording (0-32768, Default 2048) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
-RECORDING_END_THRESHOLD = 2048
+# Chunk amplitude required to stop recording (0-32768, Default 4096) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
+RECORDING_END_THRESHOLD = 4096
 #
 # Amplifier function deadzone (0-32768, Default 1024)
 AMPLIFIER_DEADZONE = 1024
@@ -42,7 +42,7 @@ FORMAT = pyaudio.paInt16
 # Input+output channels (DO NOT CHANGE, sound card handles stereo conversion if needed)
 CHANNELS = 1
 #
-# Frames per buffer for input
+# Frames per buffer for audio input
 INPUT_FRAMES_PER_BLOCK = 4096
 #
 # Directory where ideal waves are stored
@@ -52,20 +52,41 @@ IDEAL_WAVES_DIR = "data/ideal_waves/"
 class digitalModulationTypes():
     def afsk500() -> str: # Audio Frequency-Shift Keying (500 baud)
         return "afsk500"
+    def afsk750() -> str: # Audio Frequency-Shift Keying (750 baud)
+        return "afsk750"
     def afsk1000() -> str: # Audio Frequency-Shift Keying (1000 baud)
         return "afsk1000"
-    def default() -> str:
+    def afsk1500() -> str: # Audio Frequency-Shift Keying (1500 baud)
+        return "afsk1500"
+    def default() -> str: # Default (AFSK500)
         return "afsk500"
     
     # Unit time in samples
     def getUnitTime(digitalModulationType: str) -> int:
         if(digitalModulationType == "afsk500"):
             return int(SAMPLE_RATE / 500)
+        elif(digitalModulationType == "afsk750"):
+            return int(SAMPLE_RATE / 750)
         elif(digitalModulationType == "afsk1000"):
             return int(SAMPLE_RATE / 1000)
+        elif(digitalModulationType == "afsk1500"):
+            return int(SAMPLE_RATE / 1500)
         else: # default
             return int(SAMPLE_RATE / 500)
-        
+
+    # Training sequence oscillations for specified time
+    def getTsOscillations(sequenceTime: int, digitalModulationType: str) -> int:
+        if(digitalModulationType == "afsk500"):
+            return int(500 * sequenceTime / 2)
+        elif(digitalModulationType == "afsk750"):
+            return int(750 * sequenceTime / 2)
+        elif(digitalModulationType == "afsk1000"):
+            return int(1000 * sequenceTime / 2)
+        elif(digitalModulationType == "afsk1500"):
+            return int(1500 * sequenceTime / 2)
+        else: # default
+            return int(500 * sequenceTime / 2)
+
 ################################################################################ IDEAL WAVES
 class idealWaves(): # Ideal waves for TX and RX
     def __init__(self, digitalModulationType = digitalModulationTypes.default()):
@@ -87,7 +108,7 @@ class idealWaves(): # Ideal waves for TX and RX
             nFrames = f.getnframes()
             return f.readframes(nFrames)
     
-    def getTxSilence(self) -> bytes: # Silence (200ms) to pad output with for TX
+    def getTxSilence(self) -> bytes: # Silence (20ms) to pad output with for TX
         return self.__loadRawWavData(IDEAL_WAVES_DIR + "_.wav")
     def getTxSpace(self) -> bytes: # Space tone as bytes for TX
         return self.__loadRawWavData(IDEAL_WAVES_DIR + self.digitalModulationType + "/0.wav")
@@ -120,50 +141,50 @@ class Hamming():
         j = 0
         k = 1
         m = len(data)
-        res = ''
+        p = ''
         for i in range(1, m + self.r+1):
             if(i == 2**j):
-                res = res + '0'
+                p += '0'
                 j += 1
             else:
-                res = res + data[-1 * k]
+                p += data[-1 * k]
                 k += 1
-        return res[::-1]
+        return p[::-1]
 
     # Set the parity bits to their correct values
     def __setParityBits(self, data: str) -> str:
         n = len(data)
         for i in range(self.r):
-            val = 0
+            p = 0
             for j in range(1, n + 1):
                 if(j & (2**i) == (2**i)):
-                    val = val ^ int(data[-1 * j])
-            data = data[:n-(2**i)] + str(val) + data[n-(2**i)+1:]
+                    p = p ^ int(data[-1 * j])
+            data = data[:n-(2**i)] + str(p) + data[n-(2**i)+1:]
         return data
 
     # Find an error (if it exists)
     def __getErrorIndex(self, data: str) -> int:
         n = len(data)
-        res = 0
+        p = 0
         for i in range(self.r):
             val = 0
             for j in range(1, n + 1):
                 if(j & (2**i) == (2**i)):
                     val = val ^ int(data[-1 * j])
-            res = res + val*(10**i)
-        return n - int(str(res), 2)
+            p += val*(10**i)
+        return n - int(str(p), 2)
 
     # Trim the parity bits off a corrected message to get the contained data
     def __trimParityBits(self, data: str) -> str:
         data = data[::-1]
-        output = ""
+        p = ""
         j = 0
         for i in range(len(data)):
             if(i + 1 != 2 ** j):
-                output += data[i]
+                p += data[i]
             else:
                 j += 1
-        return output[::-1]
+        return p[::-1]
 
     # Correct a single error in a section of data.
     def __correctErrors(self, data: str) -> str:
@@ -197,22 +218,22 @@ class Hamming():
 ################################################################################ RX TOOLS
 class digitalReceiver():
     def __init__(self,
-    digitalModulationType = digitalModulationTypes.default(),    
-    amplitudeStartThreshold = AMPLITUDE_START_THRESHOLD,
-    amplitudeEndThreshold = AMPLITUDE_END_THRESHOLD,
-    recordingStartThreshold = RECORDING_START_THRESHOLD,
-    recordingEndThreshold = RECORDING_END_THRESHOLD,
-    amplifierDeadzone = AMPLIFIER_DEADZONE):
-        self.digitalModulationType = digitalModulationType
-        self.amplitudeStartThreshold = amplitudeStartThreshold
-        self.amplitudeEndThreshold = amplitudeEndThreshold
-        self.recordingStartThreshold = recordingStartThreshold
-        self.recordingEndThreshold = recordingEndThreshold
-        self.amplifierDeadzone = amplifierDeadzone
-        self.unitTime = digitalModulationTypes.getUnitTime(self.digitalModulationType)
-        self.ClockRecoveryScanJump = int(self.unitTime * 64)
-        self.ClockRecoveryScanWidth = int(self.unitTime * 16)
-        iw = idealWaves(digitalModulationType = self.digitalModulationType)
+    dModType = digitalModulationTypes.default(),    
+    ampStartThresh = AMPLITUDE_START_THRESHOLD,
+    ampEndThresh = AMPLITUDE_END_THRESHOLD,
+    recStartThresh = RECORDING_START_THRESHOLD,
+    recEndThresh = RECORDING_END_THRESHOLD,
+    ampDeadzone = AMPLIFIER_DEADZONE):
+        self.dModType = dModType
+        self.ampStartThresh = ampStartThresh
+        self.ampEndThresh = ampEndThresh
+        self.recStartThresh = recStartThresh
+        self.recEndThresh = recEndThresh
+        self.ampDeadzone = ampDeadzone
+        self.unitTime = digitalModulationTypes.getUnitTime(self.dModType)
+        self.crScanJump = int(self.unitTime * 64)
+        self.crScanWidth = int(self.unitTime * 16)
+        iw = idealWaves(digitalModulationType = self.dModType)
         self.rxSpace = iw.getRxSpace()
         self.rxMark = iw.getRxMark()
         self.rxTraining = iw.getRxTraining()
@@ -228,9 +249,9 @@ class digitalReceiver():
     def __amplifyChunk(self, chunk: list) -> list:
         ampChunk = []
         for i in chunk:
-            if(i > self.amplifierDeadzone):
+            if(i > self.ampDeadzone):
                 ampChunk.append(32767)
-            elif(i < -1 * self.amplifierDeadzone):
+            elif(i < -1 * self.ampDeadzone):
                 ampChunk.append(-32767)
             else:
                 ampChunk.append(0)
@@ -294,16 +315,16 @@ class digitalReceiver():
     def __findStart(self, chunk: list) -> int:
         try:
             ampIndex = 0
-            while(abs(chunk[ampIndex]) < self.amplitudeStartThreshold): # Find the rough start of the training block
+            while(abs(chunk[ampIndex]) < self.ampStartThresh): # Find the rough start of the training block
                 ampIndex += 1
-            ampIndex += self.ClockRecoveryScanJump # Jump into the training block and pull a sample for clock recovery
-            fitChunk = chunk[(ampIndex-self.ClockRecoveryScanWidth):(ampIndex+self.ClockRecoveryScanWidth+self.unitTime*2)]
+            ampIndex += self.crScanJump # Jump into the training block and pull a sample for clock recovery
+            fitChunk = chunk[(ampIndex-self.crScanWidth):(ampIndex+self.crScanWidth+self.unitTime*2)]
             fitChunk = self.__amplifyChunk(fitChunk) # Amplify our sample to fit it to ideal waves
             fitErrs = []
-            for i in range(self.ClockRecoveryScanWidth * 2): # Create an array of errors
+            for i in range(self.crScanWidth * 2): # Create an array of errors
                 fitErrs.append(self.__compareSamples(self.rxTraining, fitChunk[i:i+self.unitTime * 2]))
             # Find the start index with the lowest error to recover the clock.
-            startIndex = ampIndex - self.ClockRecoveryScanWidth + fitErrs.index(min(fitErrs))
+            startIndex = ampIndex - self.crScanWidth + fitErrs.index(min(fitErrs))
             return startIndex
         except Exception as e:
             return -1
@@ -339,7 +360,7 @@ class digitalReceiver():
             chunkIter = int(self.unitTime) + startSample # Decode to bits (including training block)
             while(chunkIter < nFrames - 1):
                 chunk = expFrames[int(chunkIter - self.unitTime):int(chunkIter)]
-                if(self.__absDeviation(chunk) < self.amplitudeEndThreshold): # End decode when no more data is being transmitted
+                if(self.__absDeviation(chunk) < self.ampEndThresh): # End decode when no more data is being transmitted
                     break
                 binData += self.__getLogicValue(chunk)
                 chunkIter += self.unitTime
@@ -355,7 +376,7 @@ class digitalReceiver():
                 trainingBits += 1
             if(data[i] == "0"):
                 zeroStreak += 1
-                if(zeroStreak > 4 and trainingBits > 16):
+                if(zeroStreak > 2 and trainingBits > 16):
                     endTrainingIndex = i + 1
                     break
             else:
@@ -387,7 +408,7 @@ class digitalReceiver():
     
     # One call to receive bytes data from default audio input (timeout in seconds, disabled by default)
     def rx(self, timeout=-1):
-        wavData = self.__autoRecord(self.recordingStartThreshold, self.recordingEndThreshold, timeout)
+        wavData = self.__autoRecord(self.recStartThresh, self.recEndThresh, timeout)
         bd = self.__getBitsFromWavData(wavData)
         if(bd == ""): # if no good data
             return b"", 0
@@ -410,12 +431,12 @@ class digitalReceiver():
 ################################################################################ TX TOOLS
 class digitalTransmitter():
     def __init__(self, 
-    digitalModulationType = digitalModulationTypes.default(),
-    trainingSequenceOscillations = TRAINING_SEQUENCE_OSCILLATIONS):
-        self.digitalModulationType = digitalModulationType
-        self.trainingSequenceOscillations = trainingSequenceOscillations
-        self.unitTime = digitalModulationTypes.getUnitTime(self.digitalModulationType)
-        iw = idealWaves(digitalModulationType = self.digitalModulationType)
+    dModType = digitalModulationTypes.default(),
+    trainingSequenceTime = TRAINING_SEQUENCE_TIME):
+        self.dModType = dModType
+        self.tsOscillations = digitalModulationTypes.getTsOscillations(trainingSequenceTime, self.dModType)
+        self.unitTime = digitalModulationTypes.getUnitTime(self.dModType)
+        iw = idealWaves(digitalModulationType = self.dModType)
         self.txSpace = iw.getTxSpace()
         self.txMark = iw.getTxMark()
         self.txSilence = iw.getTxSilence()
@@ -445,9 +466,9 @@ class digitalTransmitter():
 
     # Generate training block
     def __generateTrainingBlock(self) -> str:
-        output = "10" * self.trainingSequenceOscillations
+        output = "10" * self.tsOscillations
         output += "1"
-        output += "0" * 5
+        output += "0" * 3
         return output
 
     # Generate and insert ECC into the data.
@@ -503,4 +524,4 @@ class digitalTransmitter():
         self.__saveWavFile(oAudio, filename)
     
     def estTxTime(self, dataLen: int): # est transmission time in seconds
-        return (self.trainingSequenceOscillations * 2 + dataLen * 12) / (SAMPLE_RATE / self.unitTime)
+        return (self.tsOscillations * 2 + dataLen * 12) / (SAMPLE_RATE / self.unitTime)
