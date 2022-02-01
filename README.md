@@ -44,7 +44,7 @@ A python library for transmitting and receiving digital data with Audio Frequenc
 #### Parameters:
 > digitalModulationType: (required, digitalModulationTypes) Type of digital modulation to transmit.
 
-> trainingSequenceOscillations: (optional, int) Number of oscillations of the training sequence
+> trainingSequenceTime: (optional, float, default:0.5) Length of the training sequence in seconds.
 
 #### Functions:
 ##### tx():
