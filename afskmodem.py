@@ -50,42 +50,42 @@ IDEAL_WAVES_DIR = "data/ideal_waves/"
 
 ################################################################################ DIGITAL MODULATION TYPES
 class digitalModulationTypes():
-    def afsk500() -> str: # Audio Frequency-Shift Keying (500 baud)
-        return "afsk500"
-    def afsk750() -> str: # Audio Frequency-Shift Keying (750 baud)
-        return "afsk750"
+    def afsk600() -> str: # Audio Frequency-Shift Keying (600 baud)
+        return "afsk600"
     def afsk1000() -> str: # Audio Frequency-Shift Keying (1000 baud)
         return "afsk1000"
+    def afsk1200() -> str: # Audio Frequency-Shift Keying (1200 baud)
+        return "afsk1200"
     def afsk1500() -> str: # Audio Frequency-Shift Keying (1500 baud)
         return "afsk1500"
-    def default() -> str: # Default (AFSK500)
-        return "afsk500"
+    def default() -> str: # Default (AFSK1200)
+        return "afsk1200"
     
     # Unit time in samples
     def getUnitTime(digitalModulationType: str) -> int:
-        if(digitalModulationType == "afsk500"):
-            return int(SAMPLE_RATE / 500)
-        elif(digitalModulationType == "afsk750"):
-            return int(SAMPLE_RATE / 750)
+        if(digitalModulationType == "afsk600"):
+            return int(SAMPLE_RATE / 600)
         elif(digitalModulationType == "afsk1000"):
             return int(SAMPLE_RATE / 1000)
+        elif(digitalModulationType == "afsk1200"):
+            return int(SAMPLE_RATE / 1200)
         elif(digitalModulationType == "afsk1500"):
             return int(SAMPLE_RATE / 1500)
         else: # default
-            return int(SAMPLE_RATE / 500)
+            return int(SAMPLE_RATE / 1200)
 
     # Training sequence oscillations for specified time
     def getTsOscillations(sequenceTime: int, digitalModulationType: str) -> int:
-        if(digitalModulationType == "afsk500"):
-            return int(500 * sequenceTime / 2)
-        elif(digitalModulationType == "afsk750"):
-            return int(750 * sequenceTime / 2)
+        if(digitalModulationType == "afsk600"):
+            return int(600 * sequenceTime / 2)
         elif(digitalModulationType == "afsk1000"):
             return int(1000 * sequenceTime / 2)
+        elif(digitalModulationType == "afsk1200"):
+            return int(1200 * sequenceTime / 2)
         elif(digitalModulationType == "afsk1500"):
             return int(1500 * sequenceTime / 2)
         else: # default
-            return int(500 * sequenceTime / 2)
+            return int(1200 * sequenceTime / 2)
 
 ################################################################################ IDEAL WAVES
 class idealWaves(): # Ideal waves for TX and RX
