@@ -4,9 +4,11 @@ x---------------------------------------x
 | https://jvmeifert.github.io/afskmodem |
 x---------------------------------------x
 """
+from datetime import datetime
 import wave
 import struct
 import pyaudio
+import os
 from time import sleep
 
 ################################################################################ PROGRAM DEFAULTS
@@ -16,20 +18,23 @@ from time import sleep
 # Training sequence time (in seconds)
 TRAINING_SEQUENCE_TIME = 0.5
 #
-# Instant amplitude required to recognize the training sequence (0-32768, Default 16384)
-AMPLITUDE_START_THRESHOLD = 16384
+# Instant amplitude required to recognize the training sequence (0-32768, Default 20000)
+AMPLITUDE_START_THRESHOLD = 20000
 #
-# Chunk amplitude at which decoding stops (0-32768, Default 8192)
-AMPLITUDE_END_THRESHOLD = 8192
+# Chunk amplitude at which decoding stops (0-32768, Default 15000)
+AMPLITUDE_END_THRESHOLD = 15000
 #
-# Chunk amplitude required to start recording (0-32768, Default 8192) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
-RECORDING_START_THRESHOLD = 8192
+# Chunk amplitude required to start recording (0-32768, Default 20000) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
+RECORDING_START_THRESHOLD = 20000
 #
-# Chunk amplitude required to stop recording (0-32768, Default 4096) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
-RECORDING_END_THRESHOLD = 4096
+# Chunk amplitude required to stop recording (0-32768, Default 15000) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
+RECORDING_END_THRESHOLD = 15000
 #
-# Amplifier function deadzone (0-32768, Default 1024)
-AMPLIFIER_DEADZONE = 1024
+# Amplifier function deadzone (0-32768, Default 128)
+AMPLIFIER_DEADZONE = 128
+#
+# Frames per buffer for audio input (1024-4096, Default 2048) - Smaller blocks increase CPU usage but decrease latency
+INPUT_FRAMES_PER_BLOCK = 2048
 
 # SYSTEM PARAMETERS: DO NOT CHANGE THESE!
 #
@@ -42,14 +47,60 @@ FORMAT = pyaudio.paInt16
 # Input+output channels (DO NOT CHANGE, sound card handles stereo conversion if needed)
 CHANNELS = 1
 #
-# Frames per buffer for audio input
-INPUT_FRAMES_PER_BLOCK = 4096
-#
 # Directory where ideal waves are stored
 IDEAL_WAVES_DIR = "data/ideal_waves/"
 
+################################################################################ LOGGING
+
+def getDateAndTime(): # Long date and time
+        now = datetime.now()
+        return now.strftime('%Y-%m-%d %H:%M:%S')
+
+# Where to generate logfile
+LOG_PATH = "afskmodem.log"
+#
+# Logging level (0: INFO, 1: WARN, 2: ERROR, 3: FATAL, 4: NONE)
+LOG_LEVEL = 0
+#
+# Should the log be silent? (print to file but not to console)
+LOG_SILENT = False
+#
+# How the log identifies which module is logging.
+LOG_PREFIX = "(AFSKMODEM)"
+
+# Instantiate log
+try:
+    os.remove(LOG_PATH)
+except:
+    if(not LOG_SILENT):
+        print(getDateAndTime() + " [INFO]  " + LOG_PREFIX + " No previous log file exists. Creating one now.")
+
+with open(LOG_PATH, "w") as f:
+    f.write(getDateAndTime() + " [INFO]  " + LOG_PREFIX + " Logging initialized.\n")
+    if(not LOG_SILENT):
+        print(getDateAndTime() + " [INFO]  " + LOG_PREFIX + "Logging initialized.")
+
+
+def log(level: int, data: str):
+    if(level >= LOG_LEVEL):
+        output = getDateAndTime()
+        if(level == 0):
+            output += " [INFO]  "
+        elif(level == 1):
+            output += " [WARN]  "
+        elif(level == 2):
+            output += " [ERROR] "
+        else:
+            output += " [FATAL] "
+        output += LOG_PREFIX + " "
+        output += data
+        with open(LOG_PATH, "a") as f:
+            f.write(output + "\n")
+        if(not LOG_SILENT):
+            print(output)
+
 ################################################################################ DIGITAL MODULATION TYPES
-class digitalModulationTypes():
+class digitalModulationTypes:
     def afsk600() -> str: # Audio Frequency-Shift Keying (600 baud)
         return "afsk600"
     def afsk1000() -> str: # Audio Frequency-Shift Keying (1000 baud)
@@ -88,7 +139,7 @@ class digitalModulationTypes():
             return int(1200 * sequenceTime / 2)
 
 ################################################################################ IDEAL WAVES
-class idealWaves(): # Ideal waves for TX and RX
+class idealWaves: # Ideal waves for TX and RX
     def __init__(self, digitalModulationType = digitalModulationTypes.default()):
         self.digitalModulationType = digitalModulationType
 
@@ -122,7 +173,7 @@ class idealWaves(): # Ideal waves for TX and RX
         return self.getRxMark() + self.getRxSpace()
 
 ################################################################################ HAMMING ECC
-class Hamming():
+class Hamming:
     def __init__(self): # non-static to keep track of errors
         self.r = 4
         self.errorCount = 0
@@ -216,7 +267,7 @@ class Hamming():
         return(output)
 
 ################################################################################ RX TOOLS
-class digitalReceiver():
+class digitalReceiver:
     def __init__(self,
     dModType = digitalModulationTypes.default(),    
     ampStartThresh = AMPLITUDE_START_THRESHOLD,
@@ -257,14 +308,13 @@ class digitalReceiver():
                 ampChunk.append(0)
         return ampChunk
 
-    # Quick sampling amplitude
-    def __quickAvgAmp(self, frames: bytes, step=64) -> int:
-        frameIter = 0
+    # Absolute average deviation from bytes
+    def __rawAbsDeviation(self, frames: bytes) -> int:
         sampFrames = []
-        while(frameIter < len(frames) - 1): 
-            sFrame = frames[frameIter:frameIter+2]
+        for i in range(len(frames) - 1): 
+            sFrame = frames[i:i+2]
             sampFrames.append(abs(struct.unpack("<h", sFrame)[0]))
-            frameIter += step
+            i += 2
         return int(sum(sampFrames) / len(sampFrames))
 
     # Auto-record and return frames
@@ -282,16 +332,19 @@ class digitalReceiver():
                 stream.stop_stream()
                 stream.close()
                 pa.terminate()
+                log(1, "Listener timed out at " + timeout + "s.")
                 return b''
             
             totFrames = []
             frames = stream.read(INPUT_FRAMES_PER_BLOCK) # Record and sample
-            chunkAmp = self.__quickAvgAmp(frames)
+            chunkAmp = self.__rawAbsDeviation(frames)
             if(chunkAmp > start_sensitivity): # Record and return
+                log(0, "Start of transmission detected (Amplitude: " + str(chunkAmp) + "). Recording...")
                 while(chunkAmp > end_sensitivity):
                     frames = stream.read(INPUT_FRAMES_PER_BLOCK)
                     totFrames.append(frames)
-                    chunkAmp = self.__quickAvgAmp(frames)
+                    chunkAmp = self.__rawAbsDeviation(frames)
+                log(0, "End of transmission detected (Amplitude: " + str(chunkAmp) + "). Listener finished.")
                 stream.stop_stream()
                 stream.close()
                 pa.terminate()
@@ -313,6 +366,7 @@ class digitalReceiver():
 
     # Recover the clock from a chunk of audio by scanning the training sequence
     def __findStart(self, chunk: list) -> int:
+        log(0, "Attempting to recover clock...")
         try:
             ampIndex = 0
             while(abs(chunk[ampIndex]) < self.ampStartThresh): # Find the rough start of the training block
@@ -325,8 +379,10 @@ class digitalReceiver():
                 fitErrs.append(self.__compareSamples(self.rxTraining, fitChunk[i:i+self.unitTime * 2]))
             # Find the start index with the lowest error to recover the clock.
             startIndex = ampIndex - self.crScanWidth + fitErrs.index(min(fitErrs))
+            log(0, "Clock recovered at sample " + str(startIndex) +".")
             return startIndex
         except Exception as e:
+            log(1, "Failed to recover clock. Most likely bad transmission integrity.")
             return -1
 
     # Check if a chunk's value is 1 or 0 based on its frequency.
@@ -408,13 +464,17 @@ class digitalReceiver():
     
     # One call to receive bytes data from default audio input (timeout in seconds, disabled by default)
     def rx(self, timeout=-1):
+        log(0, "Receiver started.")
         wavData = self.__autoRecord(self.recStartThresh, self.recEndThresh, timeout)
         bd = self.__getBitsFromWavData(wavData)
+        log(0, "Decoding waveform to digital data...")
         if(bd == ""): # if no good data
+            log(1, "Decoding failed. No usable data found.")
             return b"", 0
         bd = self.__trimTrainingBlock(bd)
         decodedBin, errorCount = self.__getSourceDataFromECC(bd)
         bytesData = self.__getBytesFromBits(decodedBin)
+        log(0, "Decoding successful. " + str(errorCount) + " bit-errors corrected.")
         return bytesData, errorCount
     
     # One call to receive bytes data from recording
@@ -429,7 +489,7 @@ class digitalReceiver():
         return bytesData, errorCount
 
 ################################################################################ TX TOOLS
-class digitalTransmitter():
+class digitalTransmitter:
     def __init__(self, 
     dModType = digitalModulationTypes.default(),
     trainingSequenceTime = TRAINING_SEQUENCE_TIME):
@@ -508,12 +568,15 @@ class digitalTransmitter():
             f.writeframes(data)
 
     def tx(self, data: bytes): # One call to send bytes data over default audio output
+        log(0, "Encoding data for transmission...")
         messageBits = self.__getBitsFromBytes(data)
         eccBits = self.__insertECC(messageBits)
         trainingBlock = self.__generateTrainingBlock()
         txBits = trainingBlock + eccBits
         oAudio = self.__encode(txBits)
+        log(0, "Transmitting...")
         self.__playWavData(oAudio)
+        log(1, "Transmitter finished.")
 
     def txToWav(self, data: bytes, filename: str): # One call to record bytes data to file
         messageBits = self.__getBitsFromBytes(data)
