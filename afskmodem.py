@@ -78,7 +78,7 @@ except:
 with open(LOG_PATH, "w") as f:
     f.write(getDateAndTime() + " [INFO]  " + LOG_PREFIX + " Logging initialized.\n")
     if(not LOG_SILENT):
-        print(getDateAndTime() + " [INFO]  " + LOG_PREFIX + "Logging initialized.")
+        print(getDateAndTime() + " [INFO]  " + LOG_PREFIX + " Logging initialized.")
 
 
 def log(level: int, data: str):
