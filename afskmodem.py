@@ -576,7 +576,7 @@ class digitalTransmitter:
         oAudio = self.__encode(txBits)
         log(0, "Transmitting...")
         self.__playWavData(oAudio)
-        log(1, "Transmitter finished.")
+        log(0, "Transmitter finished.")
 
     def txToWav(self, data: bytes, filename: str): # One call to record bytes data to file
         messageBits = self.__getBitsFromBytes(data)
