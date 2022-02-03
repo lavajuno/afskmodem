@@ -50,36 +50,41 @@ CHANNELS = 1
 # Directory where ideal waves are stored
 IDEAL_WAVES_DIR = "data/ideal_waves/"
 
-################################################################################ LOGGING
-
+####################################################################### LOGGING
 def getDateAndTime(): # Long date and time
         now = datetime.now()
         return now.strftime('%Y-%m-%d %H:%M:%S')
 
-# Where to generate logfile
-LOG_PATH = "afskmodem.log"
-#
-# Logging level (0: INFO, 1: WARN, 2: ERROR, 3: FATAL, 4: NONE)
+# Logging level (0: INFO (recommended), 1: WARN, 2: ERROR, 3: FATAL, 4: NONE)
 LOG_LEVEL = 0
 #
-# Should the log be silent? (print to file but not to console)
-LOG_SILENT = False
+# Should the log output to the console?
+LOG_TO_CONSOLE = True
+#
+# Should the log output to a log file?
+LOG_TO_FILE = False
+#
+# Where to generate logfile if need be
+LOG_PATH = "afskmodem.log"
 #
 # How the log identifies which module is logging.
 LOG_PREFIX = "(AFSKMODEM)"
 
-# Instantiate log
-try:
-    os.remove(LOG_PATH)
-except:
-    if(not LOG_SILENT):
-        print(getDateAndTime() + " [INFO]  " + LOG_PREFIX + " No previous log file exists. Creating one now.")
+# Instantiate log file if needed
+if(LOG_TO_FILE):
+    try:
+        os.remove(LOG_PATH)
+    except:
+        if(LOG_TO_CONSOLE):
+            print(getDateAndTime() + " [INIT]  " + LOG_PREFIX + " No previous log file exists. Creating one now.")
 
-with open(LOG_PATH, "w") as f:
-    f.write(getDateAndTime() + " [INFO]  " + LOG_PREFIX + " Logging initialized.\n")
-    if(not LOG_SILENT):
-        print(getDateAndTime() + " [INFO]  " + LOG_PREFIX + " Logging initialized.")
-
+    with open(LOG_PATH, "w") as f:
+        f.write(getDateAndTime() + " [INIT]  " + LOG_PREFIX + " Logging initialized.\n")
+        if(LOG_TO_CONSOLE):
+            print(getDateAndTime() + " [INIT]  " + LOG_PREFIX + " Logging initialized.")
+else:
+    if(LOG_TO_CONSOLE):
+        print(getDateAndTime() + " [INIT]  " + LOG_PREFIX + " Logging initialized.")    
 
 def log(level: int, data: str):
     if(level >= LOG_LEVEL):
@@ -94,9 +99,10 @@ def log(level: int, data: str):
             output += " [FATAL] "
         output += LOG_PREFIX + " "
         output += data
-        with open(LOG_PATH, "a") as f:
-            f.write(output + "\n")
-        if(not LOG_SILENT):
+        if(LOG_TO_FILE):
+            with open(LOG_PATH, "a") as f:
+                f.write(output + "\n")
+        if(LOG_TO_CONSOLE):
             print(output)
 
 ################################################################################ DIGITAL MODULATION TYPES
