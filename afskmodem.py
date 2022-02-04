@@ -115,8 +115,8 @@ class digitalModulationTypes:
         return "afsk1200"
     def afsk1500() -> str: # Audio Frequency-Shift Keying (1500 baud)
         return "afsk1500"
-    def default() -> str: # Default (AFSK1200)
-        return "afsk1200"
+    def default() -> str: # Default (AFSK1500)
+        return "afsk1500"
     
     # Unit time in samples
     def getUnitTime(digitalModulationType: str) -> int:
@@ -129,7 +129,7 @@ class digitalModulationTypes:
         elif(digitalModulationType == "afsk1500"):
             return int(SAMPLE_RATE / 1500)
         else: # default
-            return int(SAMPLE_RATE / 1200)
+            return int(SAMPLE_RATE / 1500)
 
     # Training sequence oscillations for specified time
     def getTsOscillations(sequenceTime: int, digitalModulationType: str) -> int:
@@ -142,7 +142,7 @@ class digitalModulationTypes:
         elif(digitalModulationType == "afsk1500"):
             return int(1500 * sequenceTime / 2)
         else: # default
-            return int(1200 * sequenceTime / 2)
+            return int(1500 * sequenceTime / 2)
 
 ################################################################################ IDEAL WAVES
 class idealWaves: # Ideal waves for TX and RX

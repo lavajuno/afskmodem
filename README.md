@@ -7,9 +7,11 @@ A python library for transmitting and receiving digital data with Audio Frequenc
 
 > afsk1000(): Audio Frequency-Shift Keying at 1000 baud.
 
-> afsk1200(): Audio Frequency-Shift Keying at 1200 baud. (RECOMMENDED IN MOST CASES)
+> afsk1200(): Audio Frequency-Shift Keying at 1200 baud. 
 
-> afsk1500(): Audio Frequency-Shift Keying at 1500 baud.
+> afsk1500(): Audio Frequency-Shift Keying at 1500 baud. (RECOMMENDED IN MOST CASES)
+
+> default (): Default modulation (AFSK1500)
 
 ### digitalReceiver():
 #### Parameters:
@@ -72,12 +74,12 @@ A python library for transmitting and receiving digital data with Audio Frequenc
 ### Sending a message:
 ```
 from afskmodem import digitalTransmitter, digitalModulationTypes
-t = digitalTransmitter(digitalModulationTypes.afsk1200())
+t = digitalTransmitter(digitalModulationTypes.afsk1500())
 t.tx("Hello World!".encode("ascii", "ignore"))
 ```
 ### Receiving a message:
 ```
 from afskmodem import digitalReceiver, digitalModulationTypes
-r = digitalReceiver(digitalModulationTypes.afsk1200())
+r = digitalReceiver(digitalModulationTypes.afsk1500())
 print(r.rx().decode("ascii", "ignore"))
 ```
