@@ -18,17 +18,17 @@ from time import sleep
 # Training sequence time (in seconds)
 TRAINING_SEQUENCE_TIME = 0.6
 #
-# Instant amplitude required to recognize the training sequence (0-32768, Default 20000)
-AMPLITUDE_START_THRESHOLD = 20000
+# Instant amplitude required to recognize the training sequence (0-32768, Default 18000)
+AMPLITUDE_START_THRESHOLD = 18000
 #
-# Chunk amplitude at which decoding stops (0-32768, Default 15000)
-AMPLITUDE_END_THRESHOLD = 15000
+# Chunk amplitude at which decoding stops (0-32768, Default 14000)
+AMPLITUDE_END_THRESHOLD = 14000
 #
-# Chunk amplitude required to start recording (0-32768, Default 20000) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
-RECORDING_START_THRESHOLD = 20000
+# Chunk amplitude required to start recording (0-32768, Default 18000) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
+RECORDING_START_THRESHOLD = 18000
 #
-# Chunk amplitude required to stop recording (0-32768, Default 15000) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
-RECORDING_END_THRESHOLD = 15000
+# Chunk amplitude required to stop recording (0-32768, Default 14000) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
+RECORDING_END_THRESHOLD = 14000
 #
 # Amplifier function deadzone (0-32768, Default 128)
 AMPLIFIER_DEADZONE = 128
