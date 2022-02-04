@@ -16,7 +16,7 @@ from time import sleep
 # USER-CONFIGURABLE PARAMETERS: Although these should work fine as-is, fine-tuning them will not affect functionality.
 #
 # Training sequence time (in seconds)
-TRAINING_SEQUENCE_TIME = 0.5
+TRAINING_SEQUENCE_TIME = 0.6
 #
 # Instant amplitude required to recognize the training sequence (0-32768, Default 20000)
 AMPLITUDE_START_THRESHOLD = 20000
