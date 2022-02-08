@@ -336,7 +336,7 @@ class digitalReceiver:
                 stream.stop_stream()
                 stream.close()
                 pa.terminate()
-                log(1, "Listener timed out at " + timeout + "s.")
+                log(0, "Listener timed out at " + timeout + "s.")
                 return b''
             
             totFrames = []
@@ -470,6 +470,8 @@ class digitalReceiver:
     def rx(self, timeout=-1):
         log(0, "Receiver started.")
         wavData = self.__autoRecord(self.recStartThresh, self.recEndThresh, timeout)
+        if(wavData == b""): # if timed out
+            return b"", 0
         bd = self.__getBitsFromWavData(wavData)
         log(0, "Decoding waveform to digital data...")
         if(bd == ""): # if no good data
