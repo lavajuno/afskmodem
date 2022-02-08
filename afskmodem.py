@@ -5,6 +5,7 @@ x---------------------------------------x
 x---------------------------------------x
 """
 from datetime import datetime
+import math
 import wave
 import struct
 import pyaudio
@@ -18,22 +19,22 @@ from time import sleep
 # Training sequence time (in seconds)
 TRAINING_SEQUENCE_TIME = 0.6
 #
-# Instant amplitude required to recognize the training sequence (0-32768, Default 18000)
+# Instant amplitude required to recognize the training sequence (0-32768, Default 18000 [-5.2 dBfs])
 AMPLITUDE_START_THRESHOLD = 18000
 #
-# Chunk amplitude at which decoding stops (0-32768, Default 14000)
+# Chunk amplitude at which decoding stops (0-32768, Default 14000 [-7.4 dBfs])
 AMPLITUDE_END_THRESHOLD = 14000
 #
-# Chunk amplitude required to start recording (0-32768, Default 18000) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
+# Chunk amplitude required to start recording (0-32768, Default 18000 [-5.2 dBfs]) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
 RECORDING_START_THRESHOLD = 18000
 #
-# Chunk amplitude required to stop recording (0-32768, Default 14000) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
+# Chunk amplitude required to stop recording (0-32768, Default 14000 [-7.4 dBfs]) * SQUELCH SHOULD BE ENABLED ON RX HARDWARE
 RECORDING_END_THRESHOLD = 14000
 #
-# Amplifier function deadzone (0-32768, Default 128)
+# Amplifier function deadzone (0-32768, Default 128 [-48.2 dBfs])
 AMPLIFIER_DEADZONE = 128
 #
-# Frames per buffer for audio input (1024-4096, Default 2048) - Smaller blocks increase CPU usage but decrease latency
+# Frames per buffer for audio input (1024-4096, Default 2048 [0.043s]) - Smaller blocks increase CPU usage but decrease latency
 INPUT_FRAMES_PER_BLOCK = 2048
 
 # SYSTEM PARAMETERS: DO NOT CHANGE THESE!
@@ -104,6 +105,10 @@ def log(level: int, data: str):
                 f.write(output + "\n")
         if(LOG_TO_CONSOLE):
             print(output)
+
+################################################################################ UTILS
+def ampToDb(amp: float, fs = 32768.0) -> float:
+    return 20 * math.log(abs(amp) / fs)
 
 ################################################################################ DIGITAL MODULATION TYPES
 class digitalModulationTypes:
