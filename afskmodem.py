@@ -76,16 +76,9 @@ if(LOG_TO_FILE):
     try:
         os.remove(LOG_PATH)
     except:
-        if(LOG_TO_CONSOLE):
-            print(getDateAndTime() + " [INIT]  " + LOG_PREFIX + " No previous log file exists. Creating one now.")
-
+        pass
     with open(LOG_PATH, "w") as f:
         f.write(getDateAndTime() + " [INIT]  " + LOG_PREFIX + " Logging initialized.\n")
-        if(LOG_TO_CONSOLE):
-            print(getDateAndTime() + " [INIT]  " + LOG_PREFIX + " Logging initialized.")
-else:
-    if(LOG_TO_CONSOLE):
-        print(getDateAndTime() + " [INIT]  " + LOG_PREFIX + " Logging initialized.")    
 
 def log(level: int, data: str):
     if(level >= LOG_LEVEL):
