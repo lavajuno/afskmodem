@@ -56,8 +56,8 @@ def getDateAndTime(): # Long date and time
         now = datetime.now()
         return now.strftime('%Y-%m-%d %H:%M:%S')
 
-# Logging level (0: INFO (recommended), 1: WARN, 2: ERROR, 3: FATAL, 4: NONE)
-LOG_LEVEL = 0
+# Logging level (0: INFO, 1: WARN (recommended), 2: ERROR, 3: FATAL, 4: NONE)
+LOG_LEVEL = 1
 #
 # Should the log output to the console?
 LOG_TO_CONSOLE = True
@@ -98,10 +98,6 @@ def log(level: int, data: str):
                 f.write(output + "\n")
         if(LOG_TO_CONSOLE):
             print(output)
-
-################################################################################ UTILS
-def ampToDb(amp: float, fs = 32768.0) -> float:
-    return 20 * math.log(abs(amp) / fs)
 
 ################################################################################ DIGITAL MODULATION TYPES
 class digitalModulationTypes:
@@ -336,7 +332,7 @@ class digitalReceiver:
                 stream.stop_stream()
                 stream.close()
                 pa.terminate()
-                log(0, "Listener timed out at " + timeout + "s.")
+                log(0, "Listener timed out at " + str(timeout) + "s.")
                 return b''
             
             totFrames = []
