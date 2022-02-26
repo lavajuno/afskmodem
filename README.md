@@ -5,11 +5,7 @@ A python library for transmitting and receiving digital data with Audio Frequenc
 #### Functions:
 > afsk600(): Audio Frequency-Shift Keying at 600 baud. 
 
-> afsk1000(): Audio Frequency-Shift Keying at 1000 baud.
-
 > afsk1200(): Audio Frequency-Shift Keying at 1200 baud. (RECOMMENDED IN MOST CASES)
-
-> afsk1500(): Audio Frequency-Shift Keying at 1500 baud.
 
 ### digitalReceiver():
 #### Parameters:
@@ -18,10 +14,6 @@ A python library for transmitting and receiving digital data with Audio Frequenc
 > amplitudeStartThreshold: (optional, int, 0-32768) Amplitude to detect start of training block
 
 > amplitudeEndThreshold: (optional, int, 0-32768) Amplitude to detect end of data
-
-> recordingStartThreshold: (optional, int, 0-32768) Amplitude to start auto-recording
-
-> recordingEndThreshold: (optional, int, 0-32768) Amplitude to stop auto-recording
 
 > amplifierDeadzone: (optional, int, 0-32768) Deadzone for amplification function
 
@@ -33,31 +25,16 @@ A python library for transmitting and receiving digital data with Audio Frequenc
 ###### Returns:
 > (bytes) Received data
 
-##### rxFromWav():
-###### Parameters:
-> filename: (required, string) Input filename
-
-###### Returns:
-> (bytes) Received data
-
 ### digitalTransmitter():
 #### Parameters:
 > digitalModulationType: (required, digitalModulationTypes) Type of digital modulation to transmit.
 
-> trainingSequenceTime: (optional, float, default:0.5) Length of the training sequence in seconds.
+> trainingSequenceTime: (optional, float) Length of the training sequence in seconds.
 
 #### Functions:
 ##### tx():
 ###### Parameters:
 > data: (required, bytes) Data to transmit
-###### Returns:
-> None
-##### txToWav():
-###### Parameters:
-> data: (required, bytes) Data to transmit
-
-> filename: (required, string) Output filename
-
 ###### Returns:
 > None
 
