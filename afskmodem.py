@@ -1,25 +1,22 @@
 """
-x---------------------------------------x
-| AFSKmodem - Accessible Digital Radio  |
-| https://jvmeifert.github.io/afskmodem |
-x---------------------------------------x
+x----------------------------------------------x
+| AFSKmodem - Simple, reliable digital radio.  |
+| https://jmeifert.github.io/afskmodem         |
+x----------------------------------------------x
 """
-from datetime import datetime
-import math
 import wave
 import struct
 import pyaudio
-import os
 from time import sleep
 
 ################################################################################ PROGRAM DEFAULTS
 
 # USER-CONFIGURABLE PARAMETERS: Although these should work fine as-is, fine-tuning them will not affect functionality.
 #
-# Training sequence time (in seconds)
+# Training sequence time in seconds (0.2-1.0, Default 0.6)
 TRAINING_SEQUENCE_TIME = 0.6
 #
-# Instant amplitude required to recognize the training sequence (0-32768, Default 18000 [-5.2 dBfs])
+# Chunk amplitude at which decoding starts (0-32768, Default 18000 [-5.2 dBfs])
 AMPLITUDE_START_THRESHOLD = 18000
 #
 # Chunk amplitude at which decoding stops (0-32768, Default 14000 [-7.4 dBfs])
@@ -42,11 +39,15 @@ FORMAT = pyaudio.paInt16
 # Input+output channels (DO NOT CHANGE, sound card handles stereo conversion if needed)
 CHANNELS = 1
 #
+# Frames to scan for clock recovery (Should scan at least two full blocks in,
+# but no more than a portion of the length of the training sequence.)
+CLOCK_SCAN_WIDTH = 2 * INPUT_FRAMES_PER_BLOCK
+#
 # Directory where ideal waves are stored
 IDEAL_WAVES_DIR = "data/ideal_waves/"
 
 ################################################################################ DIGITAL MODULATION TYPES
-class digitalModulationTypes:
+class DigitalModulationTypes:
     def afsk600() -> str: # Audio Frequency-Shift Keying (600 baud)
         return "afsk600"
     def afsk1200() -> str: # Audio Frequency-Shift Keying (1200 baud)
@@ -55,30 +56,48 @@ class digitalModulationTypes:
         return "afsk1200"
     
     # Unit time in samples
-    def getUnitTime(digitalModulationType: str) -> int:
-        if(digitalModulationType == "afsk600"):
+    def get_unit_time(digital_modulation_type: str) -> int:
+        if(digital_modulation_type == "afsk600"):
             return int(SAMPLE_RATE / 600)
-        elif(digitalModulationType == "afsk1200"):
+        elif(digital_modulation_type == "afsk1200"):
             return int(SAMPLE_RATE / 1200)
         else: # default
             return int(SAMPLE_RATE / 1200)
 
     # Training sequence oscillations for specified time
-    def getTsOscillations(sequenceTime: int, digitalModulationType: str) -> int:
-        if(digitalModulationType == "afsk600"):
-            return int(600 * sequenceTime / 2)
-        elif(digitalModulationType == "afsk1200"):
-            return int(1200 * sequenceTime / 2)
+    def get_ts_oscillations(sequence_time: int, digital_modulation_type: str) -> int:
+        if(digital_modulation_type == "afsk600"):
+            return int(600 * sequence_time / 2)
+        elif(digital_modulation_type == "afsk1200"):
+            return int(1200 * sequence_time / 2)
         else: # default
-            return int(1200 * sequenceTime / 2)
+            return int(1200 * sequence_time / 2)
+    
+    # Get the frequency of the space tone for a given type
+    def get_space_tone(digital_modulation_type: str) -> int:
+        if(digital_modulation_type == "afsk600"):
+            return 600
+        elif(digital_modulation_type == "afsk1200"):
+            return 1200
+        else: # default
+            return 1200
+
+    # Get the frequency of the mark tone for a given type
+    def get_mark_tone(digital_modulation_type: str) -> int:
+        if(digital_modulation_type == "afsk600"):
+            return 1200
+        elif(digital_modulation_type == "afsk1200"):
+            return 2400
+        else: # default
+            return 2400
 
 ################################################################################ IDEAL WAVES
-class idealWaves: # Ideal waves for TX and RX
-    def __init__(self, digitalModulationType = digitalModulationTypes.default()):
-        self.digitalModulationType = digitalModulationType
+class IdealWaves: # Ideal waves for TX and RX
+    def __init__(self, digital_modulation_type = DigitalModulationTypes.default()):
+        self.digital_modulation_type = digital_modulation_type
 
     # Load wav data to int array
-    def __loadWavData(self, filename: str) -> list:
+    def __load_wav_data(self, filename: str) -> list:
         with wave.open(filename, "r") as f:
             nFrames = f.getnframes()
             expFrames = []
@@ -88,43 +107,54 @@ class idealWaves: # Ideal waves for TX and RX
             return expFrames
 
     # Load wav data to bytes
-    def __loadRawWavData(self, filename: str) -> bytes:
+    def __load_raw_wav_data(self, filename: str) -> bytes:
         with wave.open(filename, "r") as f:
             nFrames = f.getnframes()
             return f.readframes(nFrames)
     
-    def getTxSilence(self) -> bytes: # Silence (20ms) to pad output with for TX
-        return self.__loadRawWavData(IDEAL_WAVES_DIR + "_.wav")
-    def getTxSpace(self) -> bytes: # Space tone as bytes for TX
-        return self.__loadRawWavData(IDEAL_WAVES_DIR + self.digitalModulationType + "/0.wav")
-    def getTxMark(self) -> bytes: # Mark tone as bytes for TX
-        return self.__loadRawWavData(IDEAL_WAVES_DIR + self.digitalModulationType + "/1.wav")
-    def getRxSpace(self) -> list: # Space tone as int array for RX
-        return self.__loadWavData(IDEAL_WAVES_DIR + self.digitalModulationType + "/0.wav")
-    def getRxMark(self) -> list: # Mark tone as int array for RX
-        return self.__loadWavData(IDEAL_WAVES_DIR + self.digitalModulationType + "/1.wav")
-    def getRxTraining(self) -> list: # Ideal training sequence oscillation for RX clock recovery
-        return self.getRxMark() + self.getRxSpace()
+    # Silence (20ms) to pad output with for TX
+    def get_tx_silence(self) -> bytes: 
+        return self.__load_raw_wav_data(IDEAL_WAVES_DIR + "_.wav")
+    
+    # Space tone as bytes for TX
+    def get_tx_space(self) -> bytes: 
+        return self.__load_raw_wav_data(IDEAL_WAVES_DIR + self.digital_modulation_type + "/0.wav")
+    
+    # Mark tone as bytes for TX
+    def get_tx_mark(self) -> bytes: 
+        return self.__load_raw_wav_data(IDEAL_WAVES_DIR + self.digital_modulation_type + "/1.wav")
+    
+    # Space tone as int array for RX
+    def get_rx_space(self) -> list: 
+        return self.__load_wav_data(IDEAL_WAVES_DIR + self.digital_modulation_type + "/0.wav")
+    
+    # Mark tone as int array for RX
+    def get_rx_mark(self) -> list: 
+        return self.__load_wav_data(IDEAL_WAVES_DIR + self.digital_modulation_type + "/1.wav")
+    
+    # Ideal training sequence oscillation for RX clock recovery
+    def get_rx_training(self) -> list: 
+        return self.get_rx_mark() + self.get_rx_space()
 
 ################################################################################ HAMMING ECC
 class Hamming:
-    # Each instance of Hamming keeps track of errors. 
+    # Each instance of Hamming keeps track of the errors it corrects. 
     # An instance of Hamming is created for each DigitalTransmitter or DigitalReceiver instance.
     def __init__(self): 
         self.r = 4
-        self.errorCount = 0
+        self.error_count = 0
 
-    def resetErrorCount(self): # Reset error count to 0
-        self.errorCount = 0
+    def reset_error_count(self): # Reset error count to 0
+        self.error_count = 0
     
-    def getErrorCount(self) -> int: # Get error count
-        return self.errorCount
+    def get_error_count(self) -> int: # Get error count
+        return self.error_count
     
-    def __incrementErrorCount(self): # Increment error count
-        self.errorCount += 1
+    def __increment_error_count(self): # Increment error count
+        self.error_count += 1
     
     # Pad the positions of parity bits with 0
-    def __padParityBits(self, data: str) -> str:
+    def __pad_parity_bits(self, data: str) -> str:
         j = 0
         k = 1
         m = len(data)
@@ -139,7 +169,7 @@ class Hamming:
         return p[::-1]
 
     # Set the parity bits to their correct values
-    def __setParityBits(self, data: str) -> str:
+    def __set_parity_bits(self, data: str) -> str:
         n = len(data)
         for i in range(self.r):
             p = 0
@@ -150,7 +180,7 @@ class Hamming:
         return data
 
     # Find an error (if it exists)
-    def __getErrorIndex(self, data: str) -> int:
+    def __get_error_index(self, data: str) -> int:
         n = len(data)
         p = 0
         for i in range(self.r):
@@ -162,7 +192,7 @@ class Hamming:
         return n - int(str(p), 2)
 
     # Trim the parity bits off a corrected message to get the contained data
-    def __trimParityBits(self, data: str) -> str:
+    def __trim_parity_bits(self, data: str) -> str:
         data = data[::-1]
         p = ""
         j = 0
@@ -174,164 +204,156 @@ class Hamming:
         return p[::-1]
 
     # Correct a single error in a section of data.
-    def __correctErrors(self, data: str) -> str:
-        ePos = self.__getErrorIndex(data)
-        if(ePos == len(data)):
+    def __correct_errors(self, data: str) -> str:
+        error_pos = self.__get_error_index(data)
+        if(error_pos == len(data)):
             return data
         else:
-            self.__incrementErrorCount()
-            dataList = list(data)
-            if(dataList[ePos] == "0"):
-                dataList[ePos] = "1"
+            self.__increment_error_count()
+            data_list = list(data)
+            if(data_list[error_pos] == "0"):
+                data_list[error_pos] = "1"
             else:
-                dataList[ePos] = "0"
-            data = "".join(dataList)
+                data_list[error_pos] = "0"
+            data = "".join(data_list)
         return data
 
     # Single function handling generating Hamming code. Returns a tuple with the 
     # result bit string and the number of redundant bits.
     def encode(self, data: str) -> str:
-        paddedData = self.__padParityBits(data)
-        output = self.__setParityBits(paddedData)
-        return(output)
+        padded_data = self.__pad_parity_bits(data)
+        parity_data = self.__set_parity_bits(padded_data)
+        return(parity_data)
 
     # Single function handling correcting and getting useful data from Hamming
     # code. Returns the data payload.
     def decode(self, data: str) -> str:
-        correctedData = self.__correctErrors(data)
-        output = self.__trimParityBits(correctedData)
-        return(output)
+        corrected_data = self.__correct_errors(data)
+        output_data = self.__trim_parity_bits(corrected_data)
+        return(output_data)
 
 ################################################################################ RX TOOLS
-class digitalReceiver:
+class DigitalReceiver:
     def __init__(self,
-    dModType = digitalModulationTypes.default(),    
-    ampStartThresh = AMPLITUDE_START_THRESHOLD,
-    ampEndThresh = AMPLITUDE_END_THRESHOLD,
-    ampDeadzone = AMPLIFIER_DEADZONE):
-        self.dModType = dModType
-        self.ampStartThresh = ampStartThresh
-        self.ampEndThresh = ampEndThresh
-        self.ampDeadzone = ampDeadzone
-        self.unitTime = digitalModulationTypes.getUnitTime(self.dModType)
-        self.crScanJump = int(self.unitTime * 64)
-        self.crScanWidth = int(self.unitTime * 16)
-        iw = idealWaves(digitalModulationType = self.dModType)
-        self.rxSpace = iw.getRxSpace()
-        self.rxMark = iw.getRxMark()
-        self.rxTraining = iw.getRxTraining()
+    digital_modulation_type = DigitalModulationTypes.default(),    
+    amp_start_threshold = AMPLITUDE_START_THRESHOLD,
+    amp_end_threshold = AMPLITUDE_END_THRESHOLD,
+    amp_deadzone = AMPLIFIER_DEADZONE):
+        self.digital_modulation_type = digital_modulation_type
+        self.amp_start_threshold = amp_start_threshold
+        self.amp_end_threshold = amp_end_threshold
+        self.amp_deadzone = amp_deadzone
+        self.unit_time = DigitalModulationTypes.get_unit_time(self.digital_modulation_type)
+        self.space_tone = DigitalModulationTypes.get_space_tone(self.digital_modulation_type)
+        self.mark_tone = DigitalModulationTypes.get_mark_tone(self.digital_modulation_type)
+        ideal_waves = IdealWaves(digital_modulation_type = self.digital_modulation_type)
+        self.rx_space = ideal_waves.get_rx_space()
+        self.rx_mark = ideal_waves.get_rx_mark()
+        self.rx_training = ideal_waves.get_rx_training()
         self.ecc = Hamming()
     
     # Load raw wav data from file
-    def __loadRawWavData(self, filename: str) -> bytes:
+    def __load_raw_wav_data(self, filename: str) -> bytes:
         with wave.open(filename, "r") as f:
-            nFrames = f.getnframes()
-            return f.readframes(nFrames)
+            nframes = f.getnframes()
+            return f.readframes(nframes)
     
     # From sine to square
-    def __amplifyChunk(self, chunk: list) -> list:
-        ampChunk = []
+    def __amplify_chunk(self, chunk: list) -> list:
+        amp_chunk = []
         for i in chunk:
-            if(i > self.ampDeadzone):
-                ampChunk.append(32767)
-            elif(i < -1 * self.ampDeadzone):
-                ampChunk.append(-32767)
+            if(i > self.amp_deadzone):
+                amp_chunk.append(32767)
+            elif(i < -1 * self.amp_deadzone):
+                amp_chunk.append(-32767)
             else:
-                ampChunk.append(0)
-        return ampChunk
+                amp_chunk.append(0)
+        return amp_chunk
 
     # Average deviation from bytes
-    def __avgDeviationFromBytes(self, frames: bytes) -> int:
-        sampFrames = []
+    def __avg_deviation_bytes(self, frames: bytes) -> int:
+        s_frames = []
         for i in range(len(frames) - 1): 
-            sFrame = frames[i:i+2]
-            sampFrames.append(abs(struct.unpack("<h", sFrame)[0]))
+            s_frame = frames[i:i+2]
+            s_frames.append(abs(struct.unpack("<h", s_frame)[0]))
             i += 2
-        return int(sum(sampFrames) / len(sampFrames))
+        return int(sum(s_frames) / len(s_frames))
 
     # Auto-record and return frames
-    def __autoRecord(self, start_sensitivity: int, end_sensitivity: int, timeoutSeconds=-1) -> bytes:
-        timeoutIters = round(timeoutSeconds * (SAMPLE_RATE/INPUT_FRAMES_PER_BLOCK))
+    def __auto__record(self, timeout_seconds=-1) -> bytes:
+        timeout_iters = round(timeout_seconds * (SAMPLE_RATE/INPUT_FRAMES_PER_BLOCK))
         pa = pyaudio.PyAudio() # Open an input stream with PortAudio
         stream = pa.open(format=FORMAT, channels=CHANNELS,
                 rate=SAMPLE_RATE, input=True,
                 frames_per_buffer=INPUT_FRAMES_PER_BLOCK)
         stream.read(INPUT_FRAMES_PER_BLOCK) # Flush input buffer
-        listenerIters = 0
+        listener_iters = 0
         while (True):
-            listenerIters += 1
-            if(listenerIters > timeoutIters and timeoutSeconds > 0):
+            listener_iters += 1
+            if(listener_iters > timeout_iters and timeout_seconds > 0):
                 # Close stream and return nothing if timeout is reached
                 stream.stop_stream()
                 stream.close()
                 pa.terminate()
                 return b''
             
-            recordedFrames = []
-            blockFrames = stream.read(INPUT_FRAMES_PER_BLOCK) # Record and sample
-            chunkAmplitude = self.__avgDeviationFromBytes(blockFrames)
-            if(chunkAmplitude > start_sensitivity): # Record and return
-                while(chunkAmplitude > end_sensitivity):
-                    blockFrames = stream.read(INPUT_FRAMES_PER_BLOCK)
-                    recordedFrames.append(blockFrames)
-                    chunkAmplitude = self.__avgDeviationFromBytes(blockFrames)
+            recorded_frames = []
+            block_frames = stream.read(INPUT_FRAMES_PER_BLOCK) # Record and sample
+            chunk_amplitude = self.__avg_deviation_bytes(block_frames)
+            if(chunk_amplitude > self.amp_start_threshold): # Record and return
+                while(chunk_amplitude > self.amp_end_threshold):
+                    block_frames = stream.read(INPUT_FRAMES_PER_BLOCK)
+                    recorded_frames.append(block_frames)
+                    chunk_amplitude = self.__avg_deviation_bytes(block_frames)
                 stream.stop_stream()
                 stream.close()
                 pa.terminate()
-                return b''.join(recordedFrames)
+                return b''.join(recorded_frames)
 
     # Unsigned average deviation from array of ints
-    def __avgDeviatonFromArray(self, chunk: list) -> int: 
-        frameSum = 0
+    def __avg_deviation_array(self, chunk: list) -> int: 
+        frame_sum = 0
         for frame in chunk:
-            frameSum += abs(frame)
-        return int(frameSum / len(chunk))
+            frame_sum += abs(frame)
+        return int(frame_sum / len(chunk))
 
     # Find the difference between an ideal wave and a received wave
-    def __compareSamples(self, idealSample: list, receivedSample: list) -> int: 
+    def __compare_samples(self, ideal_sample: list, given_sample: list) -> int: 
         differences = []
-        for i in range(len(idealSample)):
-            differences.append(abs(idealSample[i]-receivedSample[i]))
+        for i in range(len(ideal_sample)):
+            differences.append(abs(ideal_sample[i] - given_sample[i]))
         return int(sum(differences) / len(differences))
 
     # Recover the clock from a chunk of audio by scanning the training sequence
-    def __findStart(self, chunk: list) -> int:
+    def __recover_clock_index(self, chunk: list) -> int:
         try:
-            # Find the rough start of the training block
-            ampIndex = 0
-            while(abs(chunk[ampIndex]) < self.ampStartThresh):
-                ampIndex += 1
-            # Jump into the training block and pull a chunk of it for clock recovery
-            ampIndex += self.crScanJump 
-            fitChunk = chunk[(ampIndex-self.crScanWidth):(ampIndex+self.crScanWidth+self.unitTime*2)]
-            # Amplify our chunk to fit it to ideal waves
-            fitChunk = self.__amplifyChunk(fitChunk) 
-            fitErrs = []
-            # Create an array of errors
-            for i in range(self.crScanWidth * 2): 
-                fitErrs.append(self.__compareSamples(self.rxTraining, fitChunk[i:i+self.unitTime * 2]))
+            fit_chunk = self.__amplify_chunk(chunk[0:CLOCK_SCAN_WIDTH]) 
+            fit_devs = []
+            # Create an array of deviations
+            for i in range(len(fit_chunk) - self.unit_time * 2 - 1): 
+                fit_devs.append(self.__compare_samples(self.rx_training, fit_chunk[i:i+self.unit_time * 2]))
             # Optimize the error for the best start sample index
-            startIndex = ampIndex - self.crScanWidth + fitErrs.index(min(fitErrs))
-            return startIndex
+            start_index = fit_devs.index(min(fit_devs))
+            return start_index
 
         except Exception as e:
             # Catch most often an out-of-bounds exception indicating not enough good data
             return -1
 
     # Check if a chunk's value is 1 or 0 based on its similarity to ideal waves.
-    def __getLogicValue(self, chunk: list) -> str:
+    def __get_bit_value(self, chunk: list) -> str:
         # Amplify received wave to approximate to a square wave
-        decChunk = self.__amplifyChunk(chunk)
+        decChunk = self.__amplify_chunk(chunk)
         # Compare to ideal square waves
-        markDiff = self.__compareSamples(self.rxMark, decChunk)
-        spaceDiff = self.__compareSamples(self.rxSpace, decChunk)
+        markDiff = self.__compare_samples(self.rx_mark, decChunk)
+        spaceDiff = self.__compare_samples(self.rx_space, decChunk)
         if(markDiff < spaceDiff):
             return "1"
         else:
             return "0"
 
     # Get bits from wav data
-    def __getBitsFromWavData(self, wavFrames: bytes) -> str:
+    def __get_bits_from_wav_data(self, wavFrames: bytes) -> str:
             expFrames = []
             binData = ""
             frameIter = 0
@@ -343,25 +365,25 @@ class digitalReceiver:
             nFrames = len(expFrames)
 
             # Recover the clock
-            startSample = self.__findStart(expFrames) 
+            startSample = self.__recover_clock_index(expFrames) 
             
             # If no start sample could be found we can't decode
             if(startSample == -1): 
                 return ""
             
             # Decode to bits (including training block, we'll trim it off later)
-            chunkIter = int(self.unitTime) + startSample 
+            chunkIter = int(self.unit_time) + startSample 
             while(chunkIter < nFrames - 1):
-                chunk = expFrames[int(chunkIter - self.unitTime):int(chunkIter)]
+                chunk = expFrames[int(chunkIter - self.unit_time):int(chunkIter)]
                 # End decode when no more data is being transmitted
-                if(self.__avgDeviatonFromArray(chunk) < self.ampEndThresh): 
+                if(self.__avg_deviation_array(chunk) < self.amp_end_threshold): 
                     break
-                binData += self.__getLogicValue(chunk)
-                chunkIter += self.unitTime
+                binData += self.__get_bit_value(chunk)
+                chunkIter += self.unit_time
             return binData
 
     # Trim the training block off of received bits
-    def __trimTrainingBlock(self, data: str) -> str:
+    def __trim_training_block(self, data: str) -> str:
         trainingBits = 0
         zeroStreak = 0
         endTrainingIndex = 0
@@ -378,99 +400,99 @@ class digitalReceiver:
         return(data[endTrainingIndex::])
 
     # Convert bits to bytes
-    def __getBytesFromBits(self, bData: str) -> bytes:
-        intData = []
+    def __get_bytes_from_bits(self, b_data: str) -> bytes:
+        int_data = []
         i = 0
-        while(i < len(bData)):
-            intData.append(int(bData[(i):(i+8)], 2))
+        while(i < len(b_data)):
+            int_data.append(int(b_data[(i):(i+8)], 2))
             i += 8
-        return bytes(intData)
+        return bytes(int_data)
     
     # Run error correction and remove all parity bits from bits data
-    def __getSourceDataFromECC(self, data: str) -> str:
-        dataBytes = []
-        decodedBytes = []
-        dataIter = 0
-        self.ecc.resetErrorCount()
-        while(dataIter < len(data) - 11):
-            dataBytes.append(data[dataIter:dataIter+12])
-            dataIter += 12
-        for dataByte in dataBytes:
-            decodedBytes.append(self.ecc.decode(dataByte))
-        output = "".join(decodedBytes)
-        return output, self.ecc.getErrorCount()
+    def __get_data_from_ecc(self, data: str) -> str:
+        data_bytes = []
+        decoded_bytes = []
+        data_iter = 0
+        self.ecc.reset_error_count()
+        while(data_iter < len(data) - 11):
+            data_bytes.append(data[data_iter:data_iter+12])
+            data_iter += 12
+        for dataByte in data_bytes:
+            decoded_bytes.append(self.ecc.decode(dataByte))
+        output = "".join(decoded_bytes)
+        return output, self.ecc.get_error_count()
     
     # One call to receive bytes data from default audio input (timeout in seconds, disabled by default)
     def rx(self, timeout=-1):
-        wavData = self.__autoRecord(self.ampStartThresh, self.ampEndThresh, timeout)
-        if(wavData == b""): # if timed out
+        wav_data = self.__auto__record(timeout)
+        if(wav_data == b""): # if timed out
             return b"", 0
-        bd = self.__getBitsFromWavData(wavData)
+        bd = self.__get_bits_from_wav_data(wav_data)
         if(bd == ""): # if no good data
             return b"", 0
-        bd = self.__trimTrainingBlock(bd)
-        decodedBin, errorCount = self.__getSourceDataFromECC(bd)
-        bytesData = self.__getBytesFromBits(decodedBin)
-        return bytesData, errorCount
+        bd = self.__trim_training_block(bd)
+        decoded_bin, error_count = self.__get_data_from_ecc(bd)
+        bytes_data = self.__get_bytes_from_bits(decoded_bin)
+        return bytes_data, error_count
 
 ################################################################################ TX TOOLS
-class digitalTransmitter:
+class DigitalTransmitter:
     def __init__(self, 
-    dModType = digitalModulationTypes.default(),
-    trainingSequenceTime = TRAINING_SEQUENCE_TIME):
-        self.dModType = dModType
-        self.tsOscillations = digitalModulationTypes.getTsOscillations(trainingSequenceTime, self.dModType)
-        self.unitTime = digitalModulationTypes.getUnitTime(self.dModType)
-        iw = idealWaves(digitalModulationType = self.dModType)
-        self.txSpace = iw.getTxSpace()
-        self.txMark = iw.getTxMark()
-        self.txSilence = iw.getTxSilence()
+    digital_modulation_type = DigitalModulationTypes.default(),
+    training_sequence_time = TRAINING_SEQUENCE_TIME):
+        self.digital_modulation_type = digital_modulation_type
+        self.ts_oscillations = DigitalModulationTypes.get_ts_oscillations(training_sequence_time, self.digital_modulation_type)
+        self.unit_time = DigitalModulationTypes.get_unit_time(self.digital_modulation_type)
+        ideal_waves = IdealWaves(digital_modulation_type = self.digital_modulation_type)
+        self.tx_space = ideal_waves.get_tx_space()
+        self.tx_mark = ideal_waves.get_tx_mark()
+        self.tx_silence = ideal_waves.get_tx_silence()
         self.ecc = Hamming()
 
     # Get bits from bytes
-    def __getBitsFromBytes(self, bIn: bytes) -> str:
-        bBin = ""
-        for i in range(len(bIn)):
-            bBin += '{0:08b}'.format(bIn[i])
-        return bBin
+    def __get_bits_from_bytes(self, b_in: bytes) -> str:
+        bits = ""
+        for i in range(len(b_in)):
+            bits += '{0:08b}'.format(b_in[i])
+        return bits
 
     # Encode bits to audio
     def __encode(self, bits: str) -> bytes:
-        oFrames = []
+        out_frames = []
         # Pad the start of the file with silence
-        oFrames += self.txSilence
+        out_frames += self.tx_silence
         # Write the data freqs to the file
         for bit in bits:
             if(bit == "0"):
-                oFrames += self.txSpace
+                out_frames += self.tx_space
             else:
-                oFrames += self.txMark
+                out_frames += self.tx_mark
         # Pad the end of the file with silence
-        oFrames += self.txSilence
-        return bytes(oFrames)
+        out_frames += self.tx_silence
+        return bytes(out_frames)
 
     # Generate training block
-    def __generateTrainingBlock(self) -> str:
-        output = "10" * self.tsOscillations
+    def __make_training_block(self) -> str:
+        output = "10" * self.ts_oscillations
         output += "1"
         output += "0" * 3
         return output
 
     # Generate and insert ECC into the data.
-    def __insertECC(self, data: str) -> str:
-        dataBytes = []
-        encodedBytes = []
+    def __insert_ecc(self, data: str) -> str:
+        data_bytes = []
+        encoded_bytes = []
         dataIter = 0
         while(dataIter < len(data) - 7):
-            dataBytes.append(data[dataIter:dataIter+8])
+            data_bytes.append(data[dataIter:dataIter+8])
             dataIter += 8
-        for dataByte in dataBytes:
-            encodedBytes.append(self.ecc.encode(dataByte))
-        output = "".join(encodedBytes)
+        for dataByte in data_bytes:
+            encoded_bytes.append(self.ecc.encode(dataByte))
+        output = "".join(encoded_bytes)
         return(output)
 
     # Play a sound from wav data
-    def __playWavData(self, data: bytes):
+    def __play_wav_data(self, data: bytes):
             # Open an output stream with PortAudio
             pa = pyaudio.PyAudio()
             stream = pa.open(
@@ -487,12 +509,12 @@ class digitalTransmitter:
             pa.terminate()
 
     def tx(self, data: bytes): # One call to send bytes data over default audio output
-        messageBits = self.__getBitsFromBytes(data)
-        eccBits = self.__insertECC(messageBits)
-        trainingBlock = self.__generateTrainingBlock()
-        txBits = trainingBlock + eccBits
-        oAudio = self.__encode(txBits)
-        self.__playWavData(oAudio)
+        message_bits = self.__get_bits_from_bytes(data)
+        ecc_bits = self.__insert_ecc(message_bits)
+        training_block = self.__make_training_block()
+        tx_bits = training_block + ecc_bits
+        out_frames = self.__encode(tx_bits)
+        self.__play_wav_data(out_frames)
     
-    def estTxTime(self, dataLen: int): # Estimate transmission time in seconds
-        return (self.tsOscillations * 2 + dataLen * 12) / (SAMPLE_RATE / self.unitTime)
+    def est_tx_time(self, data_length: int): # Estimate transmission time in seconds
+        return (self.ts_oscillations * 2 + data_length * 12) / (SAMPLE_RATE / self.unit_time)

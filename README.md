@@ -1,21 +1,21 @@
 # afskmodem
 A python library for transmitting and receiving digital data with Audio Frequency-Shift Keying
 ## Classes:
-### digitalModulationTypes():
+### DigitalModulationTypes():
 #### Functions:
 > afsk600(): Audio Frequency-Shift Keying at 600 baud. 
 
 > afsk1200(): Audio Frequency-Shift Keying at 1200 baud. (RECOMMENDED IN MOST CASES)
 
-### digitalReceiver():
+### DigitalReceiver():
 #### Parameters:
-> digitalModulationType: (required, digitalModulationTypes) Type of digital modulation to listen for.
+> digital_modulation_type: (required, DigitalModulationTypes) Type of digital modulation to listen for.
 
-> amplitudeStartThreshold: (optional, int, 0-32768) Amplitude to detect start of training block
+> amp_start_threshold: (optional, int, 0-32768) Amplitude to detect start of training block
 
-> amplitudeEndThreshold: (optional, int, 0-32768) Amplitude to detect end of data
+> amp_end_threshold: (optional, int, 0-32768) Amplitude to detect end of data
 
-> amplifierDeadzone: (optional, int, 0-32768) Deadzone for amplification function
+> amp_deadzone: (optional, int, 0-32768) Deadzone for amplification function
 
 #### Functions:
 ##### rx():
@@ -27,9 +27,9 @@ A python library for transmitting and receiving digital data with Audio Frequenc
 
 ### digitalTransmitter():
 #### Parameters:
-> digitalModulationType: (required, digitalModulationTypes) Type of digital modulation to transmit.
+> digital_m_dulation_type: (required, DigitalModulationTypes) Type of digital modulation to transmit.
 
-> trainingSequenceTime: (optional, float) Length of the training sequence in seconds.
+> training_sequence_time: (optional, float) Length of the training sequence in seconds.
 
 #### Functions:
 ##### tx():
@@ -38,9 +38,9 @@ A python library for transmitting and receiving digital data with Audio Frequenc
 ###### Returns:
 > None
 
-##### estTxTime():
+##### est_tx_time():
 ###### Parameters:
-> dataLen: (required, int) Data length in bytes
+> data_length: (required, int) Data length in bytes
 
 ###### Returns:
 > (double) Estimated transmission time in seconds.
@@ -48,13 +48,13 @@ A python library for transmitting and receiving digital data with Audio Frequenc
 ## Examples:
 ### Sending a message:
 ```
-from afskmodem import digitalTransmitter, digitalModulationTypes
-t = digitalTransmitter(digitalModulationTypes.afsk1200())
+from afskmodem import DigitalTransmitter, DigitalModulationTypes
+t = DigitalTransmitter(DigitalModulationTypes.afsk1200())
 t.tx("Hello World!".encode("ascii", "ignore"))
 ```
 ### Receiving a message:
 ```
-from afskmodem import digitalReceiver, digitalModulationTypes
-r = digitalReceiver(digitalModulationTypes.afsk1200())
+from afskmodem import DigitalReceiver, DigitalModulationTypes
+r = DigitalReceiver(DigitalModulationTypes.afsk1200())
 print(r.rx().decode("ascii", "ignore"))
 ```

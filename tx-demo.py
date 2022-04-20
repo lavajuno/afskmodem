@@ -1,6 +1,6 @@
-from afskmodem import digitalTransmitter
-from afskmodem import digitalModulationTypes
-transmitter = digitalTransmitter(digitalModulationTypes.default())
+from afskmodem import DigitalTransmitter
+from afskmodem import DigitalModulationTypes
+transmitter = DigitalTransmitter(DigitalModulationTypes.default())
 print("AFSKmodem TX Demo")
 while True:
     print("Enter message string (ASCII):")

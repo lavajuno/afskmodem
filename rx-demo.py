@@ -1,6 +1,6 @@
-from afskmodem import digitalReceiver
-from afskmodem import digitalModulationTypes
-receiver = digitalReceiver(digitalModulationTypes.default())
+from afskmodem import DigitalReceiver
+from afskmodem import DigitalModulationTypes
+receiver = DigitalReceiver(DigitalModulationTypes.default())
 print("AFSKmodem RX Demo")
 while(True):
     print("Waiting for message...\n")
