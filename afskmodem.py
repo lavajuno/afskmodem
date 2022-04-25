@@ -1,7 +1,7 @@
 """
 x----------------------------------------------x
 | AFSKmodem - Simple, reliable digital radio.  |
-| https://jvmeifert.github.io/afskmodem         |
+| https://jmeifert.github.io/afskmodem         |
 x----------------------------------------------x
 """
 import wave
