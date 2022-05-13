@@ -33,7 +33,7 @@ A python library for transmitting and receiving digital data with Audio Frequenc
 
 ### digitalTransmitter():
 #### Parameters:
-> digital_m_dulation_type: (required, DigitalModulationTypes) Type of digital modulation to transmit.
+> digital_modulation_type: (required, DigitalModulationTypes) Type of digital modulation to transmit.
 
 > training_sequence_time: (optional, float) Length of the training sequence in seconds.
 
