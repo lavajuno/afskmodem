@@ -3,9 +3,15 @@ A python library for transmitting and receiving digital data with Audio Frequenc
 ## Classes:
 ### DigitalModulationTypes():
 #### Functions:
-> afsk600(): Audio Frequency-Shift Keying at 600 baud. 
+> afsk300(): Audio Frequency-Shift Keying at 300 baud.
+
+> afsk600(): Audio Frequency-Shift Keying at 600 baud.
 
 > afsk1200(): Audio Frequency-Shift Keying at 1200 baud. (RECOMMENDED IN MOST CASES)
+
+> afsk2400(): Audio Frequency-Shift Keying at 1200 baud.
+
+> afsk6000(): Audio Frequency-Shift Keying at 6000 baud.
 
 ### DigitalReceiver():
 #### Parameters:

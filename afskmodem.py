@@ -48,46 +48,76 @@ IDEAL_WAVES_DIR = "data/ideal_waves/"
 
 ################################################################################ DIGITAL MODULATION TYPES
 class DigitalModulationTypes:
+    def afsk300() -> str: # Audio Frequency-Shift Keying (300 baud)
+        return "afsk300"
     def afsk600() -> str: # Audio Frequency-Shift Keying (600 baud)
         return "afsk600"
     def afsk1200() -> str: # Audio Frequency-Shift Keying (1200 baud)
         return "afsk1200"
+    def afsk2400() -> str: # Audio Frequency-Shift Keying (2400 baud)
+        return "afsk2400"
+    def afsk6000() -> str: # Audio Frequency-Shift Keying (6000 baud)
+        return "afsk6000"
     def default() -> str: # Default (AFSK1200)
         return "afsk1200"
     
     # Unit time in samples
     def get_unit_time(digital_modulation_type: str) -> int:
-        if(digital_modulation_type == "afsk600"):
+        if(digital_modulation_type == "afsk300"):
+            return int(SAMPLE_RATE / 300)
+        elif(digital_modulation_type == "afsk600"):
             return int(SAMPLE_RATE / 600)
         elif(digital_modulation_type == "afsk1200"):
             return int(SAMPLE_RATE / 1200)
+        elif(digital_modulation_type == "afsk2400"):
+            return int(SAMPLE_RATE / 2400)
+        elif(digital_modulation_type == "afsk6000"):
+            return int(SAMPLE_RATE / 6000)
         else: # default
             return int(SAMPLE_RATE / 1200)
 
     # Training sequence oscillations for specified time
     def get_ts_oscillations(sequence_time: int, digital_modulation_type: str) -> int:
-        if(digital_modulation_type == "afsk600"):
+        if(digital_modulation_type == "afsk300"):
+            return int(300 * sequence_time / 2)
+        elif(digital_modulation_type == "afsk600"):
             return int(600 * sequence_time / 2)
         elif(digital_modulation_type == "afsk1200"):
             return int(1200 * sequence_time / 2)
+        elif(digital_modulation_type == "afsk2400"):
+            return int(2400 * sequence_time / 2)
+        elif(digital_modulation_type == "afsk6000"):
+            return int(6000 * sequence_time / 2)
         else: # default
             return int(1200 * sequence_time / 2)
     
     # Get the frequency of the space tone for a given type
     def get_space_tone(digital_modulation_type: str) -> int:
-        if(digital_modulation_type == "afsk600"):
+        if(digital_modulation_type == "afsk300"):
+            return 300
+        elif(digital_modulation_type == "afsk600"):
             return 600
         elif(digital_modulation_type == "afsk1200"):
             return 1200
+        elif(digital_modulation_type == "afsk2400"):
+            return 2400
+        elif(digital_modulation_type == "afsk6000"):
+            return 6000
         else: # default
             return 1200
 
     # Get the frequency of the mark tone for a given type
     def get_mark_tone(digital_modulation_type: str) -> int:
-        if(digital_modulation_type == "afsk600"):
+        if(digital_modulation_type == "afsk300"):
+            return 600
+        elif(digital_modulation_type == "afsk600"):
             return 1200
         elif(digital_modulation_type == "afsk1200"):
             return 2400
+        elif(digital_modulation_type == "afsk2400"):
+            return 4800
+        elif(digital_modulation_type == "afsk6000"):
+            return 12000
         else: # default
             return 2400
 
