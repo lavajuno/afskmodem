@@ -155,15 +155,15 @@ class IdealWaves: # Ideal waves for TX and RX
         return self.__load_raw_wav_data(IDEAL_WAVES_DIR + self.digital_modulation_type + "/1.wav")
     
     # Space tone as int array for RX
-    def get_rx_space(self) -> list(int): 
+    def get_rx_space(self) -> list: 
         return self.__load_wav_data(IDEAL_WAVES_DIR + self.digital_modulation_type + "/0.wav")
     
     # Mark tone as int array for RX
-    def get_rx_mark(self) -> list(int): 
+    def get_rx_mark(self) -> list: 
         return self.__load_wav_data(IDEAL_WAVES_DIR + self.digital_modulation_type + "/1.wav")
     
     # Ideal training sequence oscillation for RX clock recovery
-    def get_rx_training(self) -> list(int): 
+    def get_rx_training(self) -> list: 
         return self.get_rx_mark() + self.get_rx_space()
 
 ################################################################################ HAMMING ECC
@@ -289,7 +289,7 @@ class DigitalReceiver:
             return f.readframes(nframes)
     
     # From sine to square
-    def __amplify_chunk(self, chunk: list(int)) -> list(int):
+    def __amplify_chunk(self, chunk: list) -> list:
         amp_chunk = []
         for i in chunk:
             if(i > self.amp_deadzone):
@@ -341,21 +341,21 @@ class DigitalReceiver:
                 return b''.join(recorded_frames)
 
     # Unsigned average deviation from audio stored as ints
-    def __avg_deviation_array(self, chunk: list(int)) -> int: 
+    def __avg_deviation_array(self, chunk: list) -> int: 
         frame_sum = 0
         for frame in chunk:
             frame_sum += abs(frame)
         return int(frame_sum / len(chunk))
 
     # Find the difference between an ideal wave and a received wave
-    def __compare_samples(self, ideal_sample: list(int), given_sample: list(int)) -> int: 
+    def __compare_samples(self, ideal_sample: list, given_sample: list) -> int: 
         differences = []
         for i in range(len(ideal_sample)):
             differences.append(abs(ideal_sample[i] - given_sample[i]))
         return int(sum(differences) / len(differences))
 
     # Recover the clock from a chunk of audio by scanning the training sequence
-    def __recover_clock_index(self, chunk: list(int)) -> int:
+    def __recover_clock_index(self, chunk: list) -> int:
         try:
             fit_chunk = self.__amplify_chunk(chunk[0:CLOCK_SCAN_WIDTH]) 
             fit_devs = []
@@ -371,7 +371,7 @@ class DigitalReceiver:
             return -1
 
     # Check if a chunk's value is 1 or 0 based on its similarity to ideal waves.
-    def __get_bit_value(self, chunk: list(int)) -> str:
+    def __get_bit_value(self, chunk: list) -> str:
         # Amplify received wave to approximate to a square wave
         decChunk = self.__amplify_chunk(chunk)
         # Compare to ideal square waves
