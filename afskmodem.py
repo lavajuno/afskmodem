@@ -7,14 +7,16 @@ x----------------------------------------------x
 import wave
 import struct
 import pyaudio
+from datetime import datetime
+import os
 from time import sleep
 
 ################################################################################ PROGRAM DEFAULTS
 
-# USER-CONFIGURABLE PARAMETERS: Although these should work fine as-is, fine-tuning them will not affect functionality.
+# USER-CONFIGURABLE PARAMETERS: Although these should work fine as-is, tuning them will not affect functionality.
 #
-# Training sequence time in seconds (0.2-1.0, Default 0.6)
-TRAINING_SEQUENCE_TIME = 0.6
+# Training sequence time in seconds (0.5-1.0, Default 0.6)
+TRAINING_SEQUENCE_TIME = 0.8
 #
 # Chunk amplitude at which decoding starts (0-32768, Default 18000 [-5.2 dBfs])
 AMPLITUDE_START_THRESHOLD = 18000
@@ -45,6 +47,52 @@ CLOCK_SCAN_WIDTH = 2 * INPUT_FRAMES_PER_BLOCK
 #
 # Directory where ideal waves are stored
 IDEAL_WAVES_DIR = "data/ideal_waves/"
+
+################################################################################ LOGGING
+def get_date_and_time(): # Long date and time for logging
+        now = datetime.now()
+        return now.strftime('%Y-%m-%d %H:%M:%S')
+
+# Logging level (0: INFO, 1: WARN (recommended), 2: ERROR, 3: NONE)
+LOG_LEVEL = 0
+#
+# Should the log output to the console?
+LOG_TO_CONSOLE = True
+#
+# Should the log output to a log file?
+LOG_TO_FILE = False
+#
+# Where to generate logfile if need be
+LOG_PATH = "afskmodem.log"
+#
+# How the log identifies which module is logging.
+LOG_PREFIX = "(AFSKmodem)"
+
+# Initialize log file if needed
+if(LOG_TO_FILE):
+    try:
+        os.remove(LOG_PATH)
+    except:
+        pass
+    with open(LOG_PATH, "w") as f:
+        f.write(get_date_and_time() + " [INFO] " + LOG_PREFIX + " Logging initialized.\n")
+
+def log(level: int, data: str):
+    if(level >= LOG_LEVEL):
+        output = get_date_and_time()
+        if(level == 0):
+            output += " [INFO] "
+        elif(level == 1):
+            output += " [WARN] "
+        else:
+            output += " [ERR!] "
+        output += LOG_PREFIX + " "
+        output += data
+        if(LOG_TO_FILE):
+            with open(LOG_PATH, "a") as f:
+                f.write(output + "\n")
+        if(LOG_TO_CONSOLE):
+            print(output)
 
 ################################################################################ DIGITAL MODULATION TYPES
 class DigitalModulationTypes:
@@ -454,15 +502,19 @@ class DigitalReceiver:
     
     # One call to receive bytes data from default audio input (timeout in seconds, disabled by default)
     def rx(self, timeout=-1):
+        log(0, "Receiver - listening...")
         wav_data = self.__auto__record(timeout)
         if(wav_data == b""): # if timed out
+            log(1, "Receiver - timed out.")
             return b"", 0
         bd = self.__get_bits_from_wav_data(wav_data)
         if(bd == ""): # if no good data
+            log(1, "Receiver - bad packet.")
             return b"", 0
         bd = self.__trim_training_block(bd)
         decoded_bin, error_count = self.__get_data_from_ecc(bd)
         bytes_data = self.__get_bytes_from_bits(decoded_bin)
+        log(0, "Receiver - done.")
         return bytes_data, error_count
 
 ################################################################################ TX TOOLS
@@ -539,12 +591,14 @@ class DigitalTransmitter:
             pa.terminate()
 
     def tx(self, data: bytes): # One call to send bytes data over default audio output
+        log(0, "Transmitter - sending " + str(len(data)) + " bytes...")
         message_bits = self.__get_bits_from_bytes(data)
         ecc_bits = self.__insert_ecc(message_bits)
         training_block = self.__make_training_block()
         tx_bits = training_block + ecc_bits
         out_frames = self.__encode(tx_bits)
         self.__play_wav_data(out_frames)
+        log(0, "Transmitter - done.")
     
     def est_tx_time(self, data_length: int): # Estimate transmission time in seconds
         return (self.ts_oscillations * 2 + data_length * 12) / (SAMPLE_RATE / self.unit_time)
