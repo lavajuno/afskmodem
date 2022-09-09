@@ -75,17 +75,17 @@ if(LOG_TO_FILE):
     except:
         pass
     with open(LOG_PATH, "w") as f:
-        f.write(get_date_and_time() + " [INFO] " + LOG_PREFIX + " Logging initialized.\n")
+        f.write(get_date_and_time() + " [  OK  ] " + LOG_PREFIX + " Logging initialized.\n")
 
 def log(level: int, data: str):
     if(level >= LOG_LEVEL):
         output = get_date_and_time()
         if(level == 0):
-            output += " [INFO] "
+            output += " [  OK  ] "
         elif(level == 1):
-            output += " [WARN] "
+            output += " [ WARN ] "
         else:
-            output += " [ERR!] "
+            output += " [ERROR!] "
         output += LOG_PREFIX + " "
         output += data
         if(LOG_TO_FILE):
@@ -358,7 +358,7 @@ class DigitalReceiver:
         return int(sum(s_frames) / len(s_frames))
 
     # Auto-record and return frames
-    def __auto__record(self, timeout_seconds=-1) -> bytes:
+    def __auto_record(self, timeout_seconds=-1) -> bytes:
         timeout_iters = round(timeout_seconds * (SAMPLE_RATE/INPUT_FRAMES_PER_BLOCK))
         pa = pyaudio.PyAudio() # Open an input stream with PortAudio
         stream = pa.open(format=FORMAT, channels=CHANNELS,
@@ -503,7 +503,7 @@ class DigitalReceiver:
     # One call to receive bytes data from default audio input (timeout in seconds, disabled by default)
     def rx(self, timeout=-1):
         log(0, "Receiver - listening...")
-        wav_data = self.__auto__record(timeout)
+        wav_data = self.__auto_record(timeout)
         if(wav_data == b""): # if timed out
             log(1, "Receiver - timed out.")
             return b"", 0
