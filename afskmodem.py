@@ -11,12 +11,12 @@ from datetime import datetime
 import os
 from time import sleep
 
-################################################################################ PROGRAM DEFAULTS
+################################################################################ Constants
 
-# USER-CONFIGURABLE PARAMETERS: Although these should work fine as-is, tuning them will not affect functionality.
+# USER PARAMETERS: Although these should work fine as-is, tuning them will not affect functionality.
 #
 # Training sequence time in seconds (0.5-1.0, Default 0.6)
-TRAINING_SEQUENCE_TIME = 0.8
+TRAINING_SEQUENCE_TIME = 0.6
 #
 # Chunk amplitude at which decoding starts (0-32768, Default 18000 [-5.2 dBfs])
 AMPLITUDE_START_THRESHOLD = 18000
@@ -30,7 +30,7 @@ AMPLIFIER_DEADZONE = 128
 # Frames per buffer for audio input (1024-4096, Default 2048 [0.043s]) - Smaller blocks increase CPU usage but decrease latency
 INPUT_FRAMES_PER_BLOCK = 2048
 
-# SYSTEM PARAMETERS: DO NOT CHANGE THESE!
+# PROGRAM PARAMETERS: DO NOT CHANGE THESE!
 #
 # How many samples per second we are recording (DO NOT CHANGE, sound card resamples if needed)
 SAMPLE_RATE = 48000
@@ -48,10 +48,9 @@ CLOCK_SCAN_WIDTH = 2 * INPUT_FRAMES_PER_BLOCK
 # Directory where ideal waves are stored
 IDEAL_WAVES_DIR = "data/ideal_waves/"
 
-################################################################################ LOGGING
+################################################################################ Logging
 def get_date_and_time(): # Long date and time for logging
-        now = datetime.now()
-        return now.strftime('%Y-%m-%d %H:%M:%S')
+        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 # Logging level (0: INFO, 1: WARN (recommended), 2: ERROR, 3: NONE)
 LOG_LEVEL = 0
@@ -94,87 +93,106 @@ def log(level: int, data: str):
         if(LOG_TO_CONSOLE):
             print(output)
 
-################################################################################ DIGITAL MODULATION TYPES
-class DigitalModulationTypes:
-    def afsk300() -> str: # Audio Frequency-Shift Keying (300 baud)
+################################################################################ DigitalModes
+"""
+    DigitalModes defines the speeds at which AFSKmodem can operate, 
+    and the tones that they use.
+"""
+class DigitalModes:
+    # Audio Frequency-Shift Keying (300 baud)
+    def afsk300() -> str: 
         return "afsk300"
-    def afsk600() -> str: # Audio Frequency-Shift Keying (600 baud)
+
+    # Audio Frequency-Shift Keying (600 baud)
+    def afsk600() -> str: 
         return "afsk600"
-    def afsk1200() -> str: # Audio Frequency-Shift Keying (1200 baud)
+    
+    # Audio Frequency-Shift Keying (1200 baud)
+    def afsk1200() -> str: 
         return "afsk1200"
-    def afsk2400() -> str: # Audio Frequency-Shift Keying (2400 baud)
+
+    # Audio Frequency-Shift Keying (2400 baud)
+    def afsk2400() -> str: 
         return "afsk2400"
-    def afsk6000() -> str: # Audio Frequency-Shift Keying (6000 baud)
+
+    # Audio Frequency-Shift Keying (6000 baud)
+    def afsk6000() -> str: 
         return "afsk6000"
-    def default() -> str: # Default (AFSK1200)
+
+    # Default (AFSK1200)
+    def default() -> str: 
         return "afsk1200"
     
     # Unit time in samples
-    def get_unit_time(digital_modulation_type: str) -> int:
-        if(digital_modulation_type == "afsk300"):
+    def get_unit_time(digital_mode: str) -> int:
+        if(digital_mode == "afsk300"):
             return int(SAMPLE_RATE / 300)
-        elif(digital_modulation_type == "afsk600"):
+        elif(digital_mode == "afsk600"):
             return int(SAMPLE_RATE / 600)
-        elif(digital_modulation_type == "afsk1200"):
+        elif(digital_mode == "afsk1200"):
             return int(SAMPLE_RATE / 1200)
-        elif(digital_modulation_type == "afsk2400"):
+        elif(digital_mode == "afsk2400"):
             return int(SAMPLE_RATE / 2400)
-        elif(digital_modulation_type == "afsk6000"):
+        elif(digital_mode == "afsk6000"):
             return int(SAMPLE_RATE / 6000)
         else: # default
             return int(SAMPLE_RATE / 1200)
 
-    # Training sequence oscillations for specified time
-    def get_ts_oscillations(sequence_time: int, digital_modulation_type: str) -> int:
-        if(digital_modulation_type == "afsk300"):
+    # Returns the number of training sequence oscillations for a specified time
+    def get_ts_oscillations(sequence_time: int, digital_mode: str) -> int:
+        if(digital_mode == "afsk300"):
             return int(300 * sequence_time / 2)
-        elif(digital_modulation_type == "afsk600"):
+        elif(digital_mode == "afsk600"):
             return int(600 * sequence_time / 2)
-        elif(digital_modulation_type == "afsk1200"):
+        elif(digital_mode == "afsk1200"):
             return int(1200 * sequence_time / 2)
-        elif(digital_modulation_type == "afsk2400"):
+        elif(digital_mode == "afsk2400"):
             return int(2400 * sequence_time / 2)
-        elif(digital_modulation_type == "afsk6000"):
+        elif(digital_mode == "afsk6000"):
             return int(6000 * sequence_time / 2)
         else: # default
             return int(1200 * sequence_time / 2)
     
     # Get the frequency of the space tone for a given type
-    def get_space_tone(digital_modulation_type: str) -> int:
-        if(digital_modulation_type == "afsk300"):
+    def get_space_tone(digital_mode: str) -> int:
+        if(digital_mode == "afsk300"):
             return 300
-        elif(digital_modulation_type == "afsk600"):
+        elif(digital_mode == "afsk600"):
             return 600
-        elif(digital_modulation_type == "afsk1200"):
+        elif(digital_mode == "afsk1200"):
             return 1200
-        elif(digital_modulation_type == "afsk2400"):
+        elif(digital_mode == "afsk2400"):
             return 2400
-        elif(digital_modulation_type == "afsk6000"):
+        elif(digital_mode == "afsk6000"):
             return 6000
         else: # default
             return 1200
 
     # Get the frequency of the mark tone for a given type
-    def get_mark_tone(digital_modulation_type: str) -> int:
-        if(digital_modulation_type == "afsk300"):
+    def get_mark_tone(digital_mode: str) -> int:
+        if(digital_mode == "afsk300"):
             return 600
-        elif(digital_modulation_type == "afsk600"):
+        elif(digital_mode == "afsk600"):
             return 1200
-        elif(digital_modulation_type == "afsk1200"):
+        elif(digital_mode == "afsk1200"):
             return 2400
-        elif(digital_modulation_type == "afsk2400"):
+        elif(digital_mode == "afsk2400"):
             return 4800
-        elif(digital_modulation_type == "afsk6000"):
+        elif(digital_mode == "afsk6000"):
             return 12000
         else: # default
             return 2400
 
-################################################################################ IDEAL WAVES
-class IdealWaves: # Ideal waves for TX and RX
-    def __init__(self, digital_modulation_type = DigitalModulationTypes.default()):
-        self.digital_modulation_type = digital_modulation_type
+################################################################################ IdealWaves
+"""
+    IdealWaves provides functions to load waveforms from files and return them 
+    as lists of amplitudes, stored as either bytes or ints.
+"""
+class IdealWaves:
+    def __init__(self, digital_mode = DigitalModes.default()):
+        self.digital_modulation_type = digital_mode
 
-    # Load wav data to int array
+    # Load wav data to a list of ints
     def __load_wav_data(self, filename: str) -> list:
         with wave.open(filename, "r") as f:
             nFrames = f.getnframes()
@@ -214,7 +232,11 @@ class IdealWaves: # Ideal waves for TX and RX
     def get_rx_training(self) -> list: 
         return self.get_rx_mark() + self.get_rx_space()
 
-################################################################################ HAMMING ECC
+################################################################################ Hamming ECC
+"""
+    Hamming provides functions related to error correction functionality and
+    bit-error tracking.
+"""
 class Hamming:
     # Each instance of Hamming keeps track of the errors it corrects. 
     # An instance of Hamming is created for each DigitalTransmitter or DigitalReceiver instance.
@@ -296,35 +318,38 @@ class Hamming:
             data = "".join(data_list)
         return data
 
-    # Single function handling generating Hamming code. Returns a tuple with the 
-    # result bit string and the number of redundant bits.
+    # Single function handling generating Hamming code. Returns the encoded data.
     def encode(self, data: str) -> str:
         padded_data = self.__pad_parity_bits(data)
         parity_data = self.__set_parity_bits(padded_data)
         return(parity_data)
 
     # Single function handling correcting and getting useful data from Hamming
-    # code. Returns the data payload.
+    # code. Returns the corrected data.
     def decode(self, data: str) -> str:
         corrected_data = self.__correct_errors(data)
         output_data = self.__trim_parity_bits(corrected_data)
         return(output_data)
 
-################################################################################ RX TOOLS
+################################################################################ DigitalReceiver
+"""
+    DigitalReceiver is a user-defined receiver class that provides functionality 
+    for receiving and decoding messages.
+"""
 class DigitalReceiver:
     def __init__(self,
-    digital_modulation_type = DigitalModulationTypes.default(),    
+    digital_mode = DigitalModes.default(),    
     amp_start_threshold = AMPLITUDE_START_THRESHOLD,
     amp_end_threshold = AMPLITUDE_END_THRESHOLD,
     amp_deadzone = AMPLIFIER_DEADZONE):
-        self.digital_modulation_type = digital_modulation_type
+        self.digital_mode = digital_mode
         self.amp_start_threshold = amp_start_threshold
         self.amp_end_threshold = amp_end_threshold
         self.amp_deadzone = amp_deadzone
-        self.unit_time = DigitalModulationTypes.get_unit_time(self.digital_modulation_type)
-        self.space_tone = DigitalModulationTypes.get_space_tone(self.digital_modulation_type)
-        self.mark_tone = DigitalModulationTypes.get_mark_tone(self.digital_modulation_type)
-        ideal_waves = IdealWaves(digital_modulation_type = self.digital_modulation_type)
+        self.unit_time = DigitalModes.get_unit_time(self.digital_mode)
+        self.space_tone = DigitalModes.get_space_tone(self.digital_mode)
+        self.mark_tone = DigitalModes.get_mark_tone(self.digital_mode)
+        ideal_waves = IdealWaves(self.digital_mode)
         self.rx_space = ideal_waves.get_rx_space()
         self.rx_mark = ideal_waves.get_rx_mark()
         self.rx_training = ideal_waves.get_rx_training()
@@ -421,11 +446,11 @@ class DigitalReceiver:
     # Check if a chunk's value is 1 or 0 based on its similarity to ideal waves.
     def __get_bit_value(self, chunk: list) -> str:
         # Amplify received wave to approximate to a square wave
-        decChunk = self.__amplify_chunk(chunk)
+        amp_chunk = self.__amplify_chunk(chunk)
         # Compare to ideal square waves
-        markDiff = self.__compare_samples(self.rx_mark, decChunk)
-        spaceDiff = self.__compare_samples(self.rx_space, decChunk)
-        if(markDiff < spaceDiff):
+        mark_diff = self.__compare_samples(self.rx_mark, amp_chunk)
+        space_diff = self.__compare_samples(self.rx_space, amp_chunk)
+        if(mark_diff < space_diff):
             return "1"
         else:
             return "0"
@@ -495,37 +520,41 @@ class DigitalReceiver:
         while(data_iter < len(data) - 11):
             data_bytes.append(data[data_iter:data_iter+12])
             data_iter += 12
-        for dataByte in data_bytes:
-            decoded_bytes.append(self.ecc.decode(dataByte))
+        for i in data_bytes:
+            decoded_bytes.append(self.ecc.decode(i))
         output = "".join(decoded_bytes)
         return output, self.ecc.get_error_count()
     
     # One call to receive bytes data from default audio input (timeout in seconds, disabled by default)
-    def rx(self, timeout=-1):
+    def rx(self, timeout = -1):
         log(0, "Receiver - listening...")
-        wav_data = self.__auto_record(timeout)
-        if(wav_data == b""): # if timed out
+        recv_wav = self.__auto_record(timeout)
+        if(recv_wav == b""): # if timed out
             log(1, "Receiver - timed out.")
             return b"", 0
-        bd = self.__get_bits_from_wav_data(wav_data)
-        if(bd == ""): # if no good data
-            log(1, "Receiver - bad packet.")
+        recv_bits = self.__get_bits_from_wav_data(recv_wav)
+        if(recv_bits == ""): # if no good data
+            log(1, "Receiver - bad data.")
             return b"", 0
-        bd = self.__trim_training_block(bd)
-        decoded_bin, error_count = self.__get_data_from_ecc(bd)
+        recv_bits = self.__trim_training_block(recv_bits)
+        decoded_bin, error_count = self.__get_data_from_ecc(recv_bits)
         bytes_data = self.__get_bytes_from_bits(decoded_bin)
         log(0, "Receiver - done.")
         return bytes_data, error_count
 
-################################################################################ TX TOOLS
+################################################################################ DigitalTransmitter
+"""
+    DigitalTransmitter is a user-defined transmitter class that provides
+    functionality for encoding and sending messages.
+"""
 class DigitalTransmitter:
     def __init__(self, 
-    digital_modulation_type = DigitalModulationTypes.default(),
+    digital_modulation_type = DigitalModes.default(),
     training_sequence_time = TRAINING_SEQUENCE_TIME):
         self.digital_modulation_type = digital_modulation_type
-        self.ts_oscillations = DigitalModulationTypes.get_ts_oscillations(training_sequence_time, self.digital_modulation_type)
-        self.unit_time = DigitalModulationTypes.get_unit_time(self.digital_modulation_type)
-        ideal_waves = IdealWaves(digital_modulation_type = self.digital_modulation_type)
+        self.ts_oscillations = DigitalModes.get_ts_oscillations(training_sequence_time, self.digital_modulation_type)
+        self.unit_time = DigitalModes.get_unit_time(self.digital_modulation_type)
+        ideal_waves = IdealWaves(digital_mode = self.digital_modulation_type)
         self.tx_space = ideal_waves.get_tx_space()
         self.tx_mark = ideal_waves.get_tx_mark()
         self.tx_silence = ideal_waves.get_tx_silence()
