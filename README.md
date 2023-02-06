@@ -1,7 +1,7 @@
 # afskmodem
 A python library for transmitting and receiving digital data with Audio Frequency-Shift Keying
 ## Classes:
-### DigitalModulationTypes():
+### DigitalModes:
 #### Functions:
 > afsk300(): Audio Frequency-Shift Keying at 300 baud.
 
@@ -15,7 +15,7 @@ A python library for transmitting and receiving digital data with Audio Frequenc
 
 ### DigitalReceiver():
 #### Parameters:
-> digital_modulation_type: (required, DigitalModulationTypes) Type of digital modulation to listen for.
+> digital_mode: (required, DigitalModes) Type of digital modulation to listen for.
 
 > amp_start_threshold: (optional, int, 0-32768) Amplitude to detect start of training block
 
@@ -33,7 +33,7 @@ A python library for transmitting and receiving digital data with Audio Frequenc
 
 ### digitalTransmitter():
 #### Parameters:
-> digital_modulation_type: (required, DigitalModulationTypes) Type of digital modulation to transmit.
+> digital_mode: (required, DigitalModes) Type of digital modulation to transmit.
 
 > training_sequence_time: (optional, float) Length of the training sequence in seconds.
 
@@ -54,13 +54,13 @@ A python library for transmitting and receiving digital data with Audio Frequenc
 ## Examples:
 ### Sending a message:
 ```
-from afskmodem import DigitalTransmitter, DigitalModulationTypes
-t = DigitalTransmitter(DigitalModulationTypes.afsk1200())
+from afskmodem import DigitalTransmitter, DigitalModes
+t = DigitalTransmitter(DigitalModes.afsk1200())
 t.tx("Hello World!".encode("ascii", "ignore"))
 ```
 ### Receiving a message:
 ```
-from afskmodem import DigitalReceiver, DigitalModulationTypes
-r = DigitalReceiver(DigitalModulationTypes.afsk1200())
+from afskmodem import DigitalReceiver, DigitalModes
+r = DigitalReceiver(DigitalModes.afsk1200())
 print(r.rx().decode("ascii", "ignore"))
 ```
