@@ -1,5 +1,5 @@
 # afskmodem
-A python library for transmitting and receiving digital data with Audio Frequency-Shift Keying
+A software-defined Audio Frequency-Shift Keying modem designed for analog FM radios. Uses the device's default audio input and output.
 ## Classes:
 ### DigitalModes:
 #### Functions:
