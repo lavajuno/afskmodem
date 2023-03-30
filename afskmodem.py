@@ -1,8 +1,6 @@
 """
-x----------------------------------------------x
-| AFSKmodem - Simple, reliable digital radio.  |
-| https://jmeifert.github.io/afskmodem         |
-x----------------------------------------------x
+  afskmodem.py
+  https://lavajuno.github.io/afskmodem
 """
 import wave
 import struct
