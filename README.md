@@ -31,7 +31,7 @@ DigitalModes represents the different speeds at which AFSKmodem can run.
 
 > afsk1200(): Audio Frequency-Shift Keying at 1200 baud. (RECOMMENDED IN MOST CASES)
 
-> afsk2400(): Audio Frequency-Shift Keying at 1200 baud.
+> afsk2400(): Audio Frequency-Shift Keying at 2400 baud.
 
 > afsk6000(): Audio Frequency-Shift Keying at 6000 baud.
 
@@ -61,4 +61,4 @@ and provides functionality for encoding and sending messages.
 ### Functions
 > tx({data: bytes}) -> None - Encodes and transmits a message
 
-> est_tx_time({data_length: int) -> float - Estimates time to transmit a message with a given length.
+> estimateTxTime({data_length: int) -> float - Estimates time to transmit a message with a given length.
