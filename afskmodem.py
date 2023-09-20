@@ -50,7 +50,9 @@ CLOCK_SCAN_WIDTH = 2 * INPUT_FRAMES_PER_BLOCK
 # Directory where waveforms are stored
 WAVEFORMS_DIR = "waveforms/"
 
-################################################################################ Logging
+"""
+    Logging functionality
+"""
 def get_date_and_time(): # Long date and time for logging
         return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
