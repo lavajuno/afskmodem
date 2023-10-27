@@ -21,19 +21,19 @@ LOG_LEVEL = 0
 # Training sequence time in seconds (0.5-1.0, Default 0.6)
 TRAINING_SEQUENCE_TIME = 0.6
 
-# Chunk amplitude at which decoding starts (0-32768, Default 18000 [-5.2 dBfs])
-AMPLITUDE_START_THRESHOLD = 18000
+# Amplitude at which decoding starts (0-32768, Default 18000 [-5.2 dBfs])
+AMP_START_THRESHOLD = 18000
 
-# Chunk amplitude at which decoding stops (0-32768, Default 14000 [-7.4 dBfs])
-AMPLITUDE_END_THRESHOLD = 14000
+# Amplitude at which decoding stops (0-32768, Default 14000 [-7.4 dBfs])
+AMP_END_THRESHOLD = 14000
 
-# Amplifier function deadzone (0-32768, Default 128 [-48.2 dBfs])
-AMPLIFIER_DEADZONE = 128
+# Amplitude function deadzone (0-32768, Default 128 [-48.2 dBfs])
+AMP_DEADZONE = 128
 
 # PROGRAM CONSTANTS: Do not change these!
 
-# Frames per buffer for audio input (Default 2048 [0.043s])
-INPUT_FRAMES_PER_BLOCK = 2048
+# Frames per chunk for audio input
+CHUNK_FRAMES = 2048
 
 # Recording/playback sample rate
 SAMPLE_RATE = 48000
@@ -44,33 +44,33 @@ FORMAT = pyaudio.paInt16
 # Recording/playback channels
 CHANNELS = 1
 
-# Frames to scan for clock recovery (Should scan at least two full blocks in,
-# but no more than a portion of the length of the training sequence.)
-CLOCK_SCAN_WIDTH = 2 * INPUT_FRAMES_PER_BLOCK
+# How far in to scan for clock recovery
+CLOCK_SCAN_WIDTH = 2 * CHUNK_FRAMES
 
 # Directory where waveforms are stored
 WAVEFORMS_DIR = "waveforms/"
 
 """
-    Logging functionality
+    Log provides simple logging functionality.
 """
-# Logs an event
-def log(level: int, message: str):
-    if(level >= LOG_LEVEL):
-        output = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        if(level == 0):
-            output += " [  OK  ] "
-        elif(level == 1):
-            output += " [ WARN ] "
-        else:
-            output += " [ERROR!] "
-        output += "(AFSKmodem): "
-        output += message
-        print(output)
+class Log:
+    # Prints a log event
+    def print(level: int, message: str):
+        if(level >= LOG_LEVEL):
+            output = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            if(level == 0):
+                output += " [ INFO ] "
+            elif(level == 1):
+                output += " [ WARN ] "
+            else:
+                output += " [ERROR!] "
+            output += "(AFSKmodem) "
+            output += message
+            print(output)
 
 """
     DigitalModes defines the speeds at which AFSKmodem can operate, 
-    and the tones that they use.
+    and the tones that each speed uses.
 """
 class DigitalModes:
     # Audio Frequency-Shift Keying (300 baud)
@@ -160,6 +160,7 @@ class DigitalModes:
 """
     Waveforms provides functions to load waveforms from files and return them 
     as lists of amplitudes, stored as either bytes or ints.
+    It is instantiated with a digital mode from the class DigitalModes.
 """
 class Waveforms:
     def __init__(self, digital_mode):
@@ -273,17 +274,17 @@ class ECC:
             return (ECC.__trimParityBits(bits), False)
         else:
             bits[err_index] = "0" if bits[err_index] == "1" else "1"
-        return (ECC.__trimParityBits(bits), True)
+        return ECC.__trimParityBits(bits), True
 
     # Corrects errors and decodes data. Returns decoded bits & number of errors corrected.
     def decode(bits: str) -> (str, int):
         error_count = 0
         dec_bytes = ""
         for i in range(0, len(bits) - 11, 12):
-            (dec_byte, err_found) = ECC.__decodeByte(bits[i : i + 1])
+            dec_byte, err_found = ECC.__decodeByte(bits[i : i + 12])
             dec_bytes += dec_byte
             error_count += 1 if err_found else 0
-        return (dec_bytes, error_count)
+        return dec_bytes, error_count
     
     # Encodes data by inserting parity bits
     def encode(bits: str) -> str:
@@ -295,17 +296,15 @@ class ECC:
 """
     DigitalReceiver is a user-defined receiver class that provides functionality 
     for receiving and decoding messages.
+    It is instantiated with a digital mode from the class DigitalModes and an
+    overrideable amplitude start and end threshold for audio input.
 """
 class DigitalReceiver:
-    def __init__(self,
-    digital_mode = DigitalModes.default(),    
-    amp_start_threshold = AMPLITUDE_START_THRESHOLD,
-    amp_end_threshold = AMPLITUDE_END_THRESHOLD,
-    amp_deadzone = AMPLIFIER_DEADZONE):
+    def __init__(self, digital_mode = DigitalModes.default(), amp_start_threshold = AMP_START_THRESHOLD,
+                 amp_end_threshold = AMP_END_THRESHOLD):
         self.digital_mode = digital_mode
         self.amp_start_threshold = amp_start_threshold
         self.amp_end_threshold = amp_end_threshold
-        self.amp_deadzone = amp_deadzone
         self.unit_time = DigitalModes.getUnitTime(self.digital_mode)
         self.space_tone = DigitalModes.getSpaceTone(self.digital_mode)
         self.mark_tone = DigitalModes.getMarkTone(self.digital_mode)
@@ -318,9 +317,9 @@ class DigitalReceiver:
     def __amplifyChunk(self, chunk: list[int]) -> list[int]:
         amp_chunk = []
         for i in chunk:
-            if(i > self.amp_deadzone):
+            if(i > AMP_DEADZONE):
                 amp_chunk.append(32767)
-            elif(i < -1 * self.amp_deadzone):
+            elif(i < -1 * AMP_DEADZONE):
                 amp_chunk.append(-32767)
             else:
                 amp_chunk.append(0)
@@ -344,13 +343,16 @@ class DigitalReceiver:
 
     # Listen for a signal and return the recording to be decoded
     def __listen(self, timeout_seconds=-1) -> bytes:
-        timeout_iters = round(timeout_seconds * 
-                              (SAMPLE_RATE/INPUT_FRAMES_PER_BLOCK))
+        timeout_iters = round(timeout_seconds * (SAMPLE_RATE / CHUNK_FRAMES))
         pa = pyaudio.PyAudio() # Open an input stream with PortAudio
-        stream = pa.open(format=FORMAT, channels=CHANNELS,
-                rate=SAMPLE_RATE, input=True,
-                frames_per_buffer=INPUT_FRAMES_PER_BLOCK)
-        stream.read(INPUT_FRAMES_PER_BLOCK) # Flush input buffer
+        stream = pa.open(
+            format = FORMAT,
+            channels = CHANNELS,
+            rate = SAMPLE_RATE,
+            input = True,
+            frames_per_buffer = CHUNK_FRAMES
+        )
+        stream.read(CHUNK_FRAMES) # Flush input buffer
         listener_iters = 0
         while (True):
             listener_iters += 1
@@ -363,13 +365,13 @@ class DigitalReceiver:
             
             recorded_frames = []
             # Listen and sample
-            block_frames = stream.read(INPUT_FRAMES_PER_BLOCK)
+            block_frames = stream.read(CHUNK_FRAMES)
             chunk_amplitude = self.__avgDeviationBytes(block_frames)
             # Record if we hear a signal
             if(chunk_amplitude > self.amp_start_threshold):
                 while(chunk_amplitude > self.amp_end_threshold):
                     # Record until we no longer hear a signal
-                    block_frames = stream.read(INPUT_FRAMES_PER_BLOCK)
+                    block_frames = stream.read(CHUNK_FRAMES)
                     recorded_frames.append(block_frames)
                     chunk_amplitude = self.__avgDeviationBytes(block_frames)
                 stream.stop_stream()
@@ -392,8 +394,7 @@ class DigitalReceiver:
             fit_devs = []
             # Create an array of deviations
             for i in range(len(fit_chunk) - self.unit_time * 2 - 1): 
-                fit_devs.append(self.__compareWaveforms(
-                    self.rx_training, fit_chunk[i:i+self.unit_time * 2]))
+                fit_devs.append(self.__compareWaveforms(self.rx_training, fit_chunk[i:i+self.unit_time * 2]))
             # Optimize the error for the best start sample index
             start_index = fit_devs.index(min(fit_devs))
             return start_index
@@ -460,7 +461,7 @@ class DigitalReceiver:
                     break
             else:
                 zero_count = 0
-        return(data[end_training_index::])
+        return data[end_training_index::]
 
     # Convert bits to bytes
     def __bitsToBytes(self, b_data: str) -> bytes:
@@ -473,34 +474,33 @@ class DigitalReceiver:
     
     # Receives data and returns it (or fails)
     def rx(self, timeout: int = -1) -> (bytes, int):
-        log(0, "Receiver - listening...")
+        Log.print(0, "Receiver: Listening...")
         recv_audio = self.__listen(timeout)
-        if(recv_audio == b""): # if timed out
-            log(1, "Receiver - timed out.")
+        if(recv_audio == b""): # if no data
+            Log.print(1, "Receiver: No data.")
             return b"", 0
         recv_bits = self.__decodeBits(recv_audio)
-        if(recv_bits == ""): # if no good data
-            log(1, "Receiver - bad data.")
+        if(recv_bits == ""): # if no usable data
+            Log.print(1, "Receiver: No usable data.")
             return b"", 0
         recv_bits = self.__trimTrainingSeq(recv_bits)
-        (dec_bits, error_count) = ECC.decode(recv_bits)
+        dec_bits, error_count = ECC.decode(recv_bits)
         dec_bytes = self.__bitsToBytes(dec_bits)
-        log(0, "Receiver - done.")
-        return (dec_bytes, error_count)
+        Log.print(0, "Receiver: Done.")
+        return dec_bytes, error_count
 
 """
     DigitalTransmitter is a user-defined transmitter class that provides
     functionality for encoding and sending messages.
+    It is instantiated with a digital mode from the class DigitalModes and an
+    overrideable training sequence time in seconds.
 """
 class DigitalTransmitter:
-    def __init__(self, 
-    digital_modulation_type = DigitalModes.default(),
-    training_sequence_time = TRAINING_SEQUENCE_TIME):
-        self.digital_modulation_type = digital_modulation_type
-        self.ts_cycles = DigitalModes.getTrainingCycles(
-            training_sequence_time, self.digital_modulation_type)
-        self.unit_time = DigitalModes.getUnitTime(self.digital_modulation_type)
-        waveforms = Waveforms(digital_mode = self.digital_modulation_type)
+    def __init__(self, digital_mode = DigitalModes.default(), training_seq_time = TRAINING_SEQUENCE_TIME):
+        self.digital_mode = digital_mode
+        self.ts_cycles = DigitalModes.getTrainingCycles(training_seq_time, self.digital_mode)
+        self.unit_time = DigitalModes.getUnitTime(self.digital_mode)
+        waveforms = Waveforms(digital_mode = self.digital_mode)
         self.tx_space = waveforms.getTxSpace()
         self.tx_mark = waveforms.GetTxMark()
         self.tx_silence = waveforms.getTxSilence()
@@ -553,14 +553,15 @@ class DigitalTransmitter:
 
     # Transmits the given data.
     def tx(self, data: bytes): 
-        log(0, "Transmitter - sending " + str(len(data)) + " bytes...")
+        Log.print(0, "Transmitter: Sending " + str(len(data)) + " bytes... (ETA: "
+                + str(self.estimateTxTime(len(data))) + " sec.)")
         message_bits = self.__bytesToBits(data)
         ecc_bits = ECC.encode(message_bits)
         training_block = self.__getTrainingBlock()
         tx_bits = training_block + ecc_bits
         tx_audio = self.__encodeBits(tx_bits)
         self.__playWaveform(tx_audio)
-        log(0, "Transmitter - done.")
+        Log.print(0, "Transmitter: Done.")
     
     # Estimate transmission time in seconds
     def estimateTxTime(self, length: int) -> float: 
