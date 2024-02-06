@@ -259,10 +259,10 @@ class ECC:
     def decode(bits: str) -> list[str]:
         dec_bits = ""
         for i in range(0, len(bits) - 6, 7):
-            raw_bits = ""
+            raw_bits: list[int] = []
             for j in bits[i : i + 7]:
-                raw_bits += "0" if j == 0 else "1"
-            dec_nibble = ECC.__decodeNibble(bits[i:i+7])
+                raw_bits.append(0 if j == "0" else 1)
+            dec_nibble = ECC.__decodeNibble(raw_bits)
             for j in dec_nibble:
                 dec_bits += "0" if j == 0 else "1"
         return dec_bits
@@ -271,10 +271,10 @@ class ECC:
     def encode(bits: str) -> str:
         enc_bits = ""
         for i in range(0, len(bits) - 3, 4):
-            raw_bits = ""
+            raw_bits: list[int] = []
             for j in bits[i : i + 4]:
-                raw_bits += "0" if j == 0 else "1"
-            enc_nibble = ECC.__encodeNibble(bits[i:i+4])
+                raw_bits.append(0 if j == "0" else 1)
+            enc_nibble = ECC.__encodeNibble(raw_bits)
             for j in enc_nibble:
                 enc_bits += "0" if j == 0 else "1"
         return enc_bits
@@ -470,10 +470,10 @@ class DigitalReceiver:
             Log.print(1, "Receiver: No usable data.")
             return b"", 0
         recv_bits = self.__trimTrainingSeq(recv_bits)
-        dec_bits, error_count = ECC.decode(recv_bits)
+        dec_bits = ECC.decode(recv_bits)
         dec_bytes = self.__bitsToBytes(dec_bits)
         Log.print(0, "Receiver: Done.")
-        return dec_bytes, error_count
+        return dec_bytes
 
 """
     DigitalTransmitter is a user-defined transmitter class that provides
