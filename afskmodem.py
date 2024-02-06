@@ -217,80 +217,66 @@ class Waveforms:
     bit errors.
 """
 class ECC:
-    # Pad the positions of parity bits in a byte with 0s
-    def __padParityBits(bits: str) -> str:
-        j = 0
-        k = 1
-        pad_bits = ""
-        for i in range(1, len(bits) + 5):
-            if(i == 2**j):
-                pad_bits += '0'
-                j += 1
-            else:
-                pad_bits += bits[-1 * k]
-                k += 1
-        return pad_bits[::-1]
+    __M_GENERATOR: list[list[int]] = [
+            [1, 1, 0, 1],
+            [1, 0, 1, 1],
+            [1, 0, 0, 0],
+            [0, 1, 1, 1],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+    ]
 
-    # Trim the parity bits off an encoded byte
-    def __trimParityBits(bits: str) -> str:
-        bits = bits[::-1]
-        j = 0
-        trimmed_bits = ""
-        for i in range(len(bits)):
-            if(i + 1 != 2 ** j):
-                trimmed_bits += bits[i]
-            else:
-                j += 1
-        return trimmed_bits[::-1]
+    __M_PARITY: list[list[int]] = [
+            [1, 0, 1, 0, 1, 0, 1],
+            [0, 1, 1, 0, 0, 1, 1],
+            [0, 0, 0, 1, 1, 1, 1]
+    ]
 
-    # Find an error (if it exists) and return the index
-    def __getErrorIndex(bits: str) -> int:
-        n = len(bits)
-        p = 0
-        for i in range(4):
-            k = 0
-            for j in range(1, n + 1):
-                if(j & (2**i) == (2**i)):
-                    k = k ^ int(bits[-1 * j])
-            p += k*(10**i)
-        return n - int(str(p), 2)
- 
-    # Encodes a byte of data (8 bits -> 12 bits)
-    def __encodeByte(bits: str) -> str:
-        p_bits = ECC.__padParityBits(bits)
-        n = len(p_bits)
-        for i in range(4):
-            p = 0
-            for j in range(1, n + 1):
-                if(j & (2**i) == (2**i)):
-                    p = p ^ int(p_bits[-1 * j])
-            p_bits = p_bits[:n-(2**i)] + str(p) + p_bits[n-(2**i)+1:]
-        return p_bits
+    # Multiplies a matrix and vector modulo 2
+    def __multiply(a: list[list[int]], b: list[int]) -> list[int]:
+        result: list[int] = [0] * len(a)
+        for i in range(0, len(a)):
+            for j in range(0, len(b)):
+                result[i] += a[i][j] * b[j]
+            result[i] %= 2
+        return result
+    
+    # Encodes 4 data bits
+    def __encodeNibble(data: list[int]) -> list[int]:
+        return ECC.__multiply(ECC.__M_GENERATOR, data)
 
-    # Decodes a byte of data (12 bits -> 8 bits)
-    def __decodeByte(bits: str) -> (str, bool):
-        err_index = ECC.__getErrorIndex(bits)
-        if(err_index == len(bits)):
-            return (ECC.__trimParityBits(bits), False)
-        else:
-            bits[err_index] = "0" if bits[err_index] == "1" else "1"
-        return ECC.__trimParityBits(bits), True
+    # Decodes 4 data bits
+    def __decodeNibble(data: list[int]) -> list[int]:
+        syn: list[int] = ECC.__multiply(ECC.__M_PARITY, data)
+        error_pos: int = syn[2] * 4 + syn[1] * 2 + syn[0]
+        res: list[int] = data
+        if(error_pos != 0):
+            res[error_pos - 1] = 0 if res[error_pos - 1] == 1 else 1
+        return [res[2], res[4], res[5], res[6]]
 
-    # Corrects errors and decodes data. Returns decoded bits & number of errors corrected.
-    def decode(bits: str) -> (str, int):
-        error_count = 0
-        dec_bytes = ""
-        for i in range(0, len(bits) - 11, 12):
-            dec_byte, err_found = ECC.__decodeByte(bits[i : i + 12])
-            dec_bytes += dec_byte
-            error_count += 1 if err_found else 0
-        return dec_bytes, error_count
+    # Corrects errors and decodes data. Returns decoded bits.
+    def decode(bits: str) -> list[str]:
+        dec_bits = ""
+        for i in range(0, len(bits) - 6, 7):
+            raw_bits = ""
+            for j in bits[i : i + 7]:
+                raw_bits += "0" if j == 0 else "1"
+            dec_nibble = ECC.__decodeNibble(bits[i:i+7])
+            for j in dec_nibble:
+                dec_bits += "0" if j == 0 else "1"
+        return dec_bits
     
     # Encodes data by inserting parity bits
     def encode(bits: str) -> str:
         enc_bits = ""
-        for i in range(0, len(bits) - 7, 8):
-            enc_bits += ECC.__encodeByte(bits[i:i+8])
+        for i in range(0, len(bits) - 3, 4):
+            raw_bits = ""
+            for j in bits[i : i + 4]:
+                raw_bits += "0" if j == 0 else "1"
+            enc_nibble = ECC.__encodeNibble(bits[i:i+4])
+            for j in enc_nibble:
+                enc_bits += "0" if j == 0 else "1"
         return enc_bits
 
 """
