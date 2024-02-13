@@ -5,7 +5,7 @@ A software-defined Audio Frequency-Shift Keying modem designed for analog FM rad
 
 [Releases](https://github.com/lavajuno/afskmodem/releases)
 
-# Usage example
+# Usage Examples
 
 ### Sending a message:
 ```python
@@ -22,9 +22,28 @@ recv_data = r.receive(100)
 print(recv_data.decode("ascii", "ignore"))
 ```
 
+### Constructing a Transmitter with a custom training sequence:
+```python
+from afskmodem import Transmitter
+t = DigitalTransmitter(1200, 1.5)
+```
+
+### Constructing a Receiver with a higher sensitivity:
+```python
+from afskmodem import Receiver
+r = Receiver(1200, 14000, 11000)
+```
+
+> Note: Although it is possible to change these parameters, the defaults usually perform the best.
+> The input device's volume should be adjusted before changing the sensitivity of Receiver.
+
+# Supported Baud Rates
+afskmodem supports common baud rates like 300, 600, 1200, 2400, 4800, and 9600.
+It can use any baud rate as long as it is a factor of the sample rate (48000).
+
 # Classes
 
-## `Receiver`
+## Receiver
 
 Receiver is configured with a baud rate and optional audio settings,
 and provides functionality for receiving and decoding messages.
@@ -42,9 +61,9 @@ and provides functionality for receiving and decoding messages.
 
 `receive(timeout: float) -> bytes` - Listens and decodes a message. Takes a timeout in seconds.
 
-## `DigitalTransmitter`
+## Transmitter
 
-DigitalTransmitter is instantiated with a mode and optional audio settings,
+Transmitter is instantiated with a mode and optional audio settings,
 and provides functionality for encoding and sending messages.
 
 ### Constructor Parameters
