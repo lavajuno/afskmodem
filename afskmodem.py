@@ -6,7 +6,6 @@
 
 import pyaudio
 from datetime import datetime
-from time import sleep
 
 # Log level (0: Info (Recommended), 1: Warn, 2: Error, 3: None)
 LOG_LEVEL = 0
@@ -15,24 +14,52 @@ LOG_LEVEL = 0
     Log provides simple logging functionality.
 """
 class Log:
+    def __init__(self, class_name: str):
+        self.__class_name = class_name
+
     # Prints a log event
-    def print(level: int, message: str):
+    def __print(self, level: int, message: str):
         if(level >= LOG_LEVEL):
             output = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            if(level == 0):
-                output += " [ INFO ] "
-            elif(level == 1):
-                output += " [ WARN ] "
-            else:
-                output += " [ERROR!] "
-            output += "(AFSKmodem) "
+            output += " (afskmodem) "
+            match level:
+                case 1:
+                    output += "[ INFO ]  "
+                case 2:
+                    output += "[ WARN ]  "
+                case 3:
+                    output += "[ ERROR ] "
+                case 4:
+                    output += "[ FATAL ] "
+                case _:
+                    output += "[ DEBUG ] "
+            output += self.__class_name.ljust(20)
+            output += ": "
             output += message
             print(output)
 
+    # Prints a log event with severity DEBUG
+    def debug(self, message: str):
+        self.__print(0, message)
+
+    # Prints a log event with severity INFO
+    def info(self, message: str):
+        self.__print(1, message)
+    
+    # Prints a log event with severity WARN
+    def warn(self, message: str):
+        self.__print(2, message)
+
+    # Prints a log event with severity ERROR
+    def error(self, message: str):
+        self.__print(3, message)
+
+    # Prints a log event with severity FATAL
+    def fatal(self, message: str):
+        self.__print(4, message)
+
 """
-    Waveforms provides functions to load waveforms from files and return them 
-    as lists of amplitudes, stored as either bytes or ints.
-    It is instantiated with a digital mode from the class DigitalModes.
+    Waveforms provides functionality to generate and analyze waveforms.
 """
 class Waveforms:
     # Generates a single space tone for the given baud rate
@@ -61,7 +88,7 @@ class Waveforms:
         res.extend(Waveforms.getSpaceTone(baud_rate))
         return res
     
-    # Gets the mean amplitude of a waveform.
+    # Gets the mean amplitude of a waveform
     def getAmplitude(frames: list[int]) -> int: 
         sum = 0
         for frame in frames:
@@ -79,8 +106,8 @@ class Waveforms:
 
 
 """
-    ECC provides functionality for encoding, decoding, and correcting
-    bit errors.
+    ECC provides functionality for encoding and decoding data, correcting
+    bit errors as it decodes.
 """
 class ECC:
     __M_GENERATOR: list[list[int]] = [
@@ -144,7 +171,11 @@ class ECC:
             for j in enc_nibble:
                 enc_bits += "0" if j == 0 else "1"
         return enc_bits
-    
+
+"""
+    SoundInput provides functionality for reading from the default audio 
+    input device.
+"""
 class SoundInput:
     def __init__(self):
         self.__pa: pyaudio = pyaudio.PyAudio()
@@ -156,12 +187,15 @@ class SoundInput:
             frames_per_buffer = 2048
     )
 
+    # Starts the input stream
     def start(self):
         self.__stream.start_stream()
 
+    # Stops the input stream
     def stop(self):
         self.__stream.stop_stream()
-
+    
+    # Listens to input stream and returns a list of frames
     def listen(self) -> list[int]:
         frames: bytes = self.__stream.read(2048)
         res: list[int] = []
@@ -169,9 +203,14 @@ class SoundInput:
             res.append(int.from_bytes(frames[i:i+2], "little", signed=True))
         return res
 
+    # Closes the input stream
     def close(self):
         self.__stream.close()
 
+"""
+    SoundOutput provides functionality for writing to the default audio
+    output device.
+"""
 class SoundOutput:
     def __init__(self):
         self.__pa: pyaudio = pyaudio.PyAudio()
@@ -183,26 +222,25 @@ class SoundOutput:
         )
         self.__stream.start_stream()
     
+    # Writes frames to the output stream and blocks
     def play(self, frames: list[int]):
         out_frames: bytearray = []
         for i in range(0, len(frames) - 1, 2):
             frame = frames[i].to_bytes(2, 'little', signed=True)
             out_frames.extend(frame * 2)
-        print(out_frames)
         self.__stream.write(bytes(out_frames), len(frames),
                             exception_on_underflow=False)
 
+    # Closes the output stream
     def close(self):
         self.__stream.stop_stream()
         self.__stream.close()
 
 """
-    DigitalReceiver is a user-defined receiver class that provides functionality 
-    for receiving and decoding messages.
-    It is instantiated with a digital mode from the class DigitalModes and an
-    overrideable amplitude start and end threshold for audio input.
+    Receiver manages a line to the default audio input device
+    and allows you to receive data over it.
 """
-class DigitalReceiver:
+class Receiver:
     def __init__(self, baud_rate: int = 1200, amp_start_threshold: int = 18000,
                  amp_end_threshold: int = 14000):
         self.__bit_frames: int = int(48000 / baud_rate)
@@ -212,6 +250,7 @@ class DigitalReceiver:
         self.__mark_tone: list[int] = Waveforms.getMarkTone(baud_rate)
         self.__training_cycle: list[int] = Waveforms.getTrainingCycle(baud_rate)
         self.__sound_in: SoundInput = SoundInput()
+        self.__log = Log("Receiver")
     
     # Amplifies a received signal
     def __amplify(self, chunk: list[int]) -> list[int]:
@@ -234,21 +273,24 @@ class DigitalReceiver:
         while (listened_frames < timeout_frames):
             frames: list[int] = self.__sound_in.listen()
             if(Waveforms.getAmplitude(frames) > self.__amp_start_threshold):
-                print("Recording started")
+                self.__log.debug("Recording started")
                 recorded_frames.extend(frames)
                 break
             listened_frames += 2048
+        if(listened_frames >= timeout_frames):
+            return []
         while (True):
             frames: list[int] = self.__sound_in.listen()
             recorded_frames.extend(frames)
             if(Waveforms.getAmplitude(frames) < self.__amp_end_threshold):
-                print("Recording finished")
+                self.__log.debug("Recording finished")
                 break
         return recorded_frames
 
     # Recover the clock from a training sequence
     def __recoverClockIndex(self, frames: list[int]) -> int:
         if(len(frames) < 4096):
+            self.__log.warn("Failed to recover clock from received signal.")
             return -1
         scan_diffs: list[int] = []
         for i in range(4096 - self.__bit_frames * 2):
@@ -262,6 +304,7 @@ class DigitalReceiver:
             if(scan_diffs[i] < min_diff):
                 min_index = i
                 min_diff = scan_diffs[i]
+        self.__log.debug("Recovered clock. (frame " + str(min_index) + ")")
         return min_index
 
     # Decide if a sample represents a 1 or 0
@@ -281,7 +324,6 @@ class DigitalReceiver:
             # Recover clock
             i: int = self.__recoverClockIndex(frames)
             if(i == -1):
-                print("Failed to recover clock index")
                 return ""
 
             # Skip past training sequence
@@ -292,6 +334,8 @@ class DigitalReceiver:
                 if(self.__scanTraining(training_bits, self.__decodeBit(chunk))):
                     break
             
+            self.__log.debug("Training sequence terminated on frame " + str(i))
+            
             bits: str = ""
             # Decode and store received bits
             while(i < len(frames) - self.__bit_frames):
@@ -301,6 +345,8 @@ class DigitalReceiver:
                     break
                 bits += self.__decodeBit(chunk)
                 i += self.__bit_frames
+
+            self.__log.debug("Decoded " + str(len(bits)) )
             return bits
 
     # Updates a sliding window of training sequence bits with the given
@@ -321,29 +367,26 @@ class DigitalReceiver:
         return bytes(res)
     
     # Receives data and returns it (or fails)
-    def rx(self, timeout: int) -> bytes:
-        Log.print(0, "Receiver: Listening...")
+    def receive(self, timeout: int) -> bytes:
+        self.__log.info("Listening...")
         recv_audio = self.__listen(timeout * 48000)
-        if(recv_audio == []): # if no data
-            Log.print(1, "Receiver: No data.")
+        if(recv_audio == []):
+            self.__log.warn("Timed out.")
             return b""
         recv_bits = self.__decodeBits(recv_audio)
-        if(recv_bits == ""): # if no usable data
-            Log.print(1, "Receiver: No usable data.")
+        if(recv_bits == ""):
+            self.__log.warn("Could not decode.")
             return b""
         dec_bits = ECC.decode(recv_bits)
-        print(dec_bits)
         dec_bytes = self.__bitsToBytes(dec_bits)
-        Log.print(0, "Receiver: Done.")
+        self.__log.debug("Decoded " + str(len(dec_bytes)) + " bytes.")
         return dec_bytes
 
 """
-    DigitalTransmitter is a user-defined transmitter class that provides
-    functionality for encoding and sending messages.
-    It is instantiated with a digital mode from the class DigitalModes and an
-    overrideable training sequence time in seconds.
+    Transmitter manages a line to the default audio output device
+    and allows you to send data over it.
 """
-class DigitalTransmitter:
+class Transmitter:
 
     def __init__(self, baud_rate: int = 1200, training_time: float = 0.5):
         self.__ts_cycles: int = int(baud_rate * training_time / 2)
@@ -351,6 +394,7 @@ class DigitalTransmitter:
         self.__mark_tone = Waveforms.getMarkTone(baud_rate)
         self.__training_cycle = Waveforms.getTrainingCycle(baud_rate)
         self.__sound_out = SoundOutput()
+        self.__log = Log("Transmitter") 
     
     # Convert bytes to bits
     def __bytesToBits(self, b_in: bytes) -> str:
@@ -360,8 +404,8 @@ class DigitalTransmitter:
         return bits
 
     # Transmits the given data.
-    def tx(self, data: bytes): 
-        Log.print(0, "Transmitter: Sending " + str(len(data)) + " bytes...")
+    def transmit(self, data: bytes): 
+        self.__log.info("Transmitting " + str(len(data)) + " bytes...")
         frames: list[int] = []
         message_bits = self.__bytesToBits(data)
         ecc_bits = ECC.encode(message_bits)
@@ -378,5 +422,5 @@ class DigitalTransmitter:
             else:
                 frames.extend(self.__mark_tone)
         frames.extend([0] * 4800)
+        self.__log.info("Transmitting " + str(len(data)) + " frames...")
         self.__sound_out.play(frames)
-        Log.print(0, "Transmitter: Done.")
