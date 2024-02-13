@@ -4,7 +4,6 @@
   Author: Juno Meifert
 """
 
-import struct
 import pyaudio
 from datetime import datetime
 from time import sleep
@@ -44,7 +43,7 @@ class Waveforms:
         res: list[int] = []
         for i in range(int(bit_frames / 2)):
             res.append(32767)
-        for i in range(int(bit_frames / 1)):
+        for i in range(int(bit_frames / 2)):
             res.append(-32768)
         return res
 
@@ -63,14 +62,16 @@ class Waveforms:
         return res
     
     # Gets the mean amplitude of a waveform.
-    def getAmplitude(self, frames: list[int]) -> int: 
+    def getAmplitude(frames: list[int]) -> int: 
         sum = 0
         for frame in frames:
             sum += abs(frame)
         return int(sum / len(frames))
     
     # Gets the mean of the differences between two waveforms at each frame
-    def getDiff(self, a: list[int], b: list[int]) -> int:
+    def getDiff(a: list[int], b: list[int]) -> int:
+        if(len(a) != len(b)):
+            raise Exception("Comparing two waveforms of different lengths.")
         total: int = 0
         for i in range(len(a)):
             total += abs(a[i] - b[i])
@@ -165,8 +166,7 @@ class SoundInput:
         frames: bytes = self.__stream.read(2048)
         res: list[int] = []
         for i in range(0, len(frames) - 1, 2):
-            s_frame = frames[i:i+2]
-            res.append(struct.unpack("<h", s_frame)[0])
+            res.append(int.from_bytes(frames[i:i+2], "little", signed=True))
         return res
 
     def close(self):
@@ -175,25 +175,22 @@ class SoundInput:
 class SoundOutput:
     def __init__(self):
         self.__pa: pyaudio = pyaudio.PyAudio()
-        self.__stream: pyaudio.Stream = self.__pa.open(
+    
+    def play(self, frames: list[int]):
+        stream: pyaudio.Stream = self.__pa.open(
                 format = pyaudio.paInt16,
                 channels = 1,
                 rate = 48000,
                 output = True
         )
-        self.__stream.start_stream()
-    
-    def play(self, frames: list[int]):
-        
+        stream.start_stream()
         out_frames: bytearray = []
         for i in range(0, len(frames) - 1, 2):
             out_frames.extend(frames[i].to_bytes(2, 'little', signed=True))
-        self.__stream.write(bytes(out_frames))
-        
-
-    def close(self):
-        self.__stream.stop_stream()
-        self.__stream.close()
+        stream.write(bytes(out_frames))
+        sleep(0.1)
+        stream.stop_stream()
+        stream.close()
 
 """
     DigitalReceiver is a user-defined receiver class that provides functionality 
@@ -204,35 +201,36 @@ class SoundOutput:
 class DigitalReceiver:
     def __init__(self, baud_rate: int = 1200, amp_start_threshold: int = 18000,
                  amp_end_threshold: int = 14000):
-        self.__bit_frames: int = 48000 / baud_rate
+        self.__bit_frames: int = int(48000 / baud_rate)
         self.__amp_start_threshold: int = amp_start_threshold
         self.__amp_end_threshold: int = amp_end_threshold
-        self.space_tone: list[int] = Waveforms.getSpaceTone(baud_rate)
-        self.mark_tone: list[int] = Waveforms.getMarkTone(baud_rate)
-        self.training_cycle: list[int] = Waveforms.getTrainingCycle()
+        self.__space_tone: list[int] = Waveforms.getSpaceTone(baud_rate)
+        self.__mark_tone: list[int] = Waveforms.getMarkTone(baud_rate)
+        self.__training_cycle: list[int] = Waveforms.getTrainingCycle(baud_rate)
         self.__sound_in: SoundInput = SoundInput()
     
     # Amplifies a received signal
     def __amplify(self, chunk: list[int]) -> list[int]:
-        amp_chunk = []
+        res: list[int] = []
         for i in chunk:
             if(i > 512):
-                amp_chunk.append(32767)
+                res.append(32767)
             elif(i < -512):
-                amp_chunk.append(-32767)
+                res.append(-32768)
             else:
-                amp_chunk.append(0)
-        return amp_chunk
+                res.append(0)
+        return res
 
     # Records a signal and returns it as a list of frames
     def __listen(self, timeout_frames: int) -> list[int]:
         recorded_frames: list[int] = []
         listened_frames: int = 0
         self.__sound_in.start()
-        self.__sound_in.listen(2048) # Discard initial input
+        self.__sound_in.listen() # Discard initial input
         while (listened_frames < timeout_frames):
             frames: list[int] = self.__sound_in.listen()
             if(Waveforms.getAmplitude(frames) > self.__amp_start_threshold):
+                print("Recording started")
                 recorded_frames.extend(frames)
                 break
             listened_frames += 2048
@@ -240,40 +238,35 @@ class DigitalReceiver:
             frames: list[int] = self.__sound_in.listen()
             recorded_frames.extend(frames)
             if(Waveforms.getAmplitude(frames) < self.__amp_end_threshold):
+                print("Recording finished")
                 break
         return recorded_frames
 
     # Recover the clock from a training sequence
     def __recoverClockIndex(self, frames: list[int]) -> int:
-        try:
-            if(len(frames) < 4096):
-                return -1
-            scan_diffs: list[int] = []
-            for i in range(4096 - self.__bit_frames * 2): 
-                scan_diffs.append(
-                    Waveforms.getDiff(self.training_cycle, 
-                                      frames[i:i+self.__bit_frames * 2])
-                )
-            min_diff: int = scan_diffs[0]
-            min_index: int = 0
-            for i in range(len(scan_diffs)):
-                if(scan_diffs[i] < min_diff):
-                    min_index = i
-                    min_diff = scan_diffs[i]
-            return min_index
-
-        except Exception as e:
-            # Catch most often an out-of-bounds exception 
-            # indicating not enough good data (TODO improve error handling)
+        if(len(frames) < 4096):
             return -1
+        scan_diffs: list[int] = []
+        for i in range(4096 - self.__bit_frames * 2):
+            scan_diffs.append(
+                Waveforms.getDiff(self.__training_cycle, 
+                                    frames[i:i+self.__bit_frames * 2])
+            )
+        min_diff: int = scan_diffs[0]
+        min_index: int = 0
+        for i in range(len(scan_diffs)):
+            if(scan_diffs[i] < min_diff):
+                min_index = i
+                min_diff = scan_diffs[i]
+        return min_index
 
     # Decide if a sample represents a 1 or 0
     def __decodeBit(self, frames: list[int]) -> str:
         # Amplify received wave to approximate to a square wave
         amp_frames = self.__amplify(frames)
         # Compare to ideal square waves
-        mark_diff = Waveforms.getDiff(self.mark_tone, amp_frames)
-        space_diff = Waveforms.getDiff(self.space_tone, amp_frames)
+        mark_diff = Waveforms.getDiff(self.__mark_tone, amp_frames)
+        space_diff = Waveforms.getDiff(self.__space_tone, amp_frames)
         if(mark_diff < space_diff):
             return "1"
         else:
@@ -283,15 +276,16 @@ class DigitalReceiver:
     def __decodeBits(self, frames: list[int]) -> str:
             # Recover clock
             i: int = self.__recoverClockIndex(frames)
-            if(i == -1): 
+            if(i == -1):
+                print("Failed to recover clock index")
                 return ""
 
             # Skip past training sequence
             training_bits: list[int] = [0] * 4
             while(i < len(frames) - self.__bit_frames):
                 chunk: list[int] = frames[i:i+self.__bit_frames]
+                i += self.__bit_frames
                 if(self.__scanTraining(training_bits, self.__decodeBit(chunk))):
-                    i += self.__bit_frames
                     break
             
             bits: str = ""
@@ -307,33 +301,34 @@ class DigitalReceiver:
 
     # Updates a sliding window of training sequence bits with the given
     # current bit, and returns true if the window matches the training sequence terminator.
-    def __scanTraining(self, seq: list[int], current: int):
+    def __scanTraining(self, seq: list[int], current: str):
         for i in range(1, 4):
             seq[i - 1] = seq[i]
-        seq[3] = current
+        seq[3] = 0 if current == "0" else 1
         return seq[0] == 1 and seq[1] == 0 and seq[2] == 0 and seq[3] == 0
 
     # Convert bits to bytes
     def __bitsToBytes(self, bits: str) -> bytes:
         res = []
         i = 0
-        while(i < len(bits) - 8):
+        while(i <= len(bits) - 8):
             res.append(int(bits[(i):(i+8)], 2))
             i += 8
         return bytes(res)
     
     # Receives data and returns it (or fails)
-    def rx(self, timeout: int = -1) -> bytes:
+    def rx(self, timeout: int) -> bytes:
         Log.print(0, "Receiver: Listening...")
-        recv_audio = self.__listen(timeout)
+        recv_audio = self.__listen(timeout * 48000)
         if(recv_audio == []): # if no data
             Log.print(1, "Receiver: No data.")
-            return b"", 0
+            return b""
         recv_bits = self.__decodeBits(recv_audio)
         if(recv_bits == ""): # if no usable data
             Log.print(1, "Receiver: No usable data.")
-            return b"", 0
+            return b""
         dec_bits = ECC.decode(recv_bits)
+        print(dec_bits)
         dec_bytes = self.__bitsToBytes(dec_bits)
         Log.print(0, "Receiver: Done.")
         return dec_bytes
@@ -351,6 +346,7 @@ class DigitalTransmitter:
         self.__ts_cycles: int = int(baud_rate * training_time / 2)
         self.__space_tone = Waveforms.getSpaceTone(baud_rate)
         self.__mark_tone = Waveforms.getMarkTone(baud_rate)
+        self.__training_cycle = Waveforms.getTrainingCycle(baud_rate)
         self.__sound_out = SoundOutput()
     
     # Convert bytes to bits
@@ -360,35 +356,24 @@ class DigitalTransmitter:
             bits += '{0:08b}'.format(b_in[i])
         return bits
 
-    # Encode bits to audio
-    def __encodeBits(self, bits: str) -> list[int]:
-        out_frames: list[int] = []
-        # Pad the start with silence
-        out_frames += [0] * self.__bit_frames
-        # Write out bits as space and mark tones
-        for bit in bits:
-            if(bit == "0"):
-                out_frames += self.__space_tone
-            else:
-                out_frames += self.__mark_tone
-        # Pad the end with silence
-        out_frames += [0] * self.__bit_frames
-        return out_frames
-
-    # Generate training sequence bits
-    def __getTrainingBlock(self) -> str:
-        output = "10" * self.__ts_cycles
-        output += "1"
-        output += "0" * 3
-        return output
-
     # Transmits the given data.
     def tx(self, data: bytes): 
         Log.print(0, "Transmitter: Sending " + str(len(data)) + " bytes...")
+        frames: list[int] = []
         message_bits = self.__bytesToBits(data)
         ecc_bits = ECC.encode(message_bits)
-        training_block = self.__getTrainingBlock()
-        tx_bits = training_block + ecc_bits
-        tx_audio = self.__encodeBits(tx_bits)
-        self.__sound_out.play(tx_audio)
+        # Training sequence
+        for i in range(self.__ts_cycles):
+            frames.extend(self.__training_cycle)
+        # Training sequence terminator
+        frames.extend(self.__mark_tone)
+        for i in range(3):
+            frames.extend(self.__space_tone)
+        for i in ecc_bits:
+            if(i == "0"):
+                frames.extend(self.__space_tone)
+            else:
+                frames.extend(self.__mark_tone)
+        frames.extend([0] * 4800)
+        self.__sound_out.play(frames)
         Log.print(0, "Transmitter: Done.")
