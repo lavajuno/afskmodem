@@ -345,8 +345,8 @@ class Receiver:
                     break
                 bits += self.__decodeBit(chunk)
                 i += self.__bit_frames
-
-            self.__log.debug("Decoded " + str(len(bits)) )
+            
+            self.__log.debug("Decoded " + str(len(bits)) + " bits. (including ECC)")
             return bits
 
     # Updates a sliding window of training sequence bits with the given
@@ -376,7 +376,7 @@ class Receiver:
             return b""
         recv_bits = self.__decodeBits(recv_audio)
         if(recv_bits == ""):
-            self.__log.warn("Could not decode.")
+            self.__log.warn("No data.")
             return b""
         dec_bits = ECC.decode(recv_bits)
         dec_bytes = self.__bitsToBytes(dec_bits)
