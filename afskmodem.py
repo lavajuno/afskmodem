@@ -175,22 +175,26 @@ class SoundInput:
 class SoundOutput:
     def __init__(self):
         self.__pa: pyaudio = pyaudio.PyAudio()
-    
-    def play(self, frames: list[int]):
-        stream: pyaudio.Stream = self.__pa.open(
+        self.__stream: pyaudio.Stream = self.__pa.open(
                 format = pyaudio.paInt16,
                 channels = 1,
                 rate = 48000,
                 output = True
         )
-        stream.start_stream()
+        self.__stream.start_stream()
+    
+    def play(self, frames: list[int]):
         out_frames: bytearray = []
         for i in range(0, len(frames) - 1, 2):
-            out_frames.extend(frames[i].to_bytes(2, 'little', signed=True))
-        stream.write(bytes(out_frames))
-        sleep(0.1)
-        stream.stop_stream()
-        stream.close()
+            frame = frames[i].to_bytes(2, 'little', signed=True)
+            out_frames.extend(frame * 2)
+        print(out_frames)
+        self.__stream.write(bytes(out_frames), len(frames),
+                            exception_on_underflow=False)
+
+    def close(self):
+        self.__stream.stop_stream()
+        self.__stream.close()
 
 """
     DigitalReceiver is a user-defined receiver class that provides functionality 
@@ -342,7 +346,6 @@ class DigitalReceiver:
 class DigitalTransmitter:
 
     def __init__(self, baud_rate: int = 1200, training_time: float = 0.5):
-        self.__bit_frames: int = int(48000 / baud_rate)
         self.__ts_cycles: int = int(baud_rate * training_time / 2)
         self.__space_tone = Waveforms.getSpaceTone(baud_rate)
         self.__mark_tone = Waveforms.getMarkTone(baud_rate)
