@@ -64,7 +64,7 @@ class Log:
 class Waveforms:
     # Generates a single space tone for the given baud rate
     def getSpaceTone(baud_rate: int) -> list[int]:
-        if(48000 % baud_rate != 0 or baud_rate % 4 != 0):
+        if(48000 % baud_rate != 0):
             raise Exception("Invalid baud rate.")
         bit_frames: int = 48000 / baud_rate
         res: list[int] = []
@@ -76,7 +76,7 @@ class Waveforms:
 
     # Generates a single mark tone for the given baud rate
     def getMarkTone(baud_rate: int) -> list[int]:
-        if(48000 % baud_rate != 0 or baud_rate % 4 != 0):
+        if(48000 % baud_rate != 0):
             raise Exception("Invalid baud rate.")
         res: list[int] = Waveforms.getSpaceTone(baud_rate * 2)
         res.extend(Waveforms.getSpaceTone(baud_rate * 2))
