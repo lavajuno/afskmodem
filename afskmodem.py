@@ -106,8 +106,8 @@ class Waveforms:
 
 
 """
-    ECC provides functionality for encoding and decoding data, correcting
-    bit errors as it decodes.
+    ECC provides functionality for encoding and decoding data with Hamming(4,3),
+    correcting bit errors as it decodes.
 """
 class ECC:
     __M_GENERATOR: list[list[int]] = [
@@ -307,7 +307,7 @@ class Receiver:
         self.__log.debug("Recovered clock. (frame " + str(min_index) + ")")
         return min_index
 
-    # Decide if a sample represents a 1 or 0
+    # Decode a single bit from a list of frames
     def __decodeBit(self, frames: list[int]) -> str:
         # Amplify received wave to approximate to a square wave
         amp_frames = self.__amplify(frames)
@@ -319,7 +319,7 @@ class Receiver:
         else:
             return "0"
 
-    # Decode bits from an audio sample
+    # Decode bits from a recorded signal
     def __decodeBits(self, frames: list[int]) -> str:
             # Recover clock
             i: int = self.__recoverClockIndex(frames)
@@ -350,7 +350,8 @@ class Receiver:
             return bits
 
     # Updates a sliding window of training sequence bits with the given
-    # current bit, and returns true if the window matches the training sequence terminator.
+    # current bit, and returns true if the window matches the training 
+    # sequence terminator.
     def __scanTraining(self, seq: list[int], current: str):
         for i in range(1, 4):
             seq[i - 1] = seq[i]
@@ -367,9 +368,9 @@ class Receiver:
         return bytes(res)
     
     # Receives data and returns it (or fails)
-    def receive(self, timeout: int) -> bytes:
+    def receive(self, timeout: float) -> bytes:
         self.__log.info("Listening...")
-        recv_audio = self.__listen(timeout * 48000)
+        recv_audio = self.__listen(int(timeout * 48000))
         if(recv_audio == []):
             self.__log.warn("Timed out.")
             return b""
@@ -387,7 +388,6 @@ class Receiver:
     and allows you to send data over it.
 """
 class Transmitter:
-
     def __init__(self, baud_rate: int = 1200, training_time: float = 0.5):
         self.__ts_cycles: int = int(baud_rate * training_time / 2)
         self.__space_tone = Waveforms.getSpaceTone(baud_rate)
