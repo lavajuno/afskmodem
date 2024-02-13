@@ -8,57 +8,51 @@ A software-defined Audio Frequency-Shift Keying modem designed for analog FM rad
 # Usage example
 
 ### Sending a message:
-```
-from afskmodem import DigitalTransmitter, DigitalModes
-t = DigitalTransmitter(DigitalModes.afsk1200())
-t.tx("Hello World!".encode("ascii", "ignore"))
+```python
+from afskmodem import Transmitter
+t = DigitalTransmitter(1200)
+t.transmit("Hello World!".encode("ascii", "ignore"))
 ```
 
 ### Receiving a message:
-```
-from afskmodem import DigitalReceiver, DigitalModes
-r = DigitalReceiver(DigitalModes.afsk1200())
-recv_data, n_errors = r.rx()
+```python
+from afskmodem import Receiver
+r = Receiver(1200)
+recv_data = r.receive(100)
 print(recv_data.decode("ascii", "ignore"))
 ```
 
 # Classes
-## DigitalModes
-DigitalModes represents the different speeds at which AFSKmodem can run.
-### Member Functions
-`afsk300()`: Audio Frequency-Shift Keying at 300 baud.
 
-`afsk600()`: Audio Frequency-Shift Keying at 600 baud.
+## `Receiver`
 
-`afsk1200()`: Audio Frequency-Shift Keying at 1200 baud. (Recommended)
-
-`afsk2400()`: Audio Frequency-Shift Keying at 2400 baud.
-
-`afsk6000()`: Audio Frequency-Shift Keying at 6000 baud.
-
-## `DigitalReceiver`
-DigitalReceiver is configured with a mode and optional audio settings,
+Receiver is configured with a baud rate and optional audio settings,
 and provides functionality for receiving and decoding messages.
+
 ### Constructor parameters
-`digital_mode`: (required, DigitalModes) Type of digital modulation to listen for.
 
-`amp_start_threshold`: (optional, int, 0-32768) Amplitude to detect start of training block
+`baud_rate`: (required, int, 300-12000) Baud rate for this Receiver
 
-`amp_end_threshold`: (optional, int, 0-32768) Amplitude to detect end of data
+`amp_start_threshold`: (optional, int, 0-32768) Amplitude to detect start of signal
+
+`amp_end_threshold`: (optional, int, 0-32768) Amplitude to detect end of signal
 
 
 ### Member Functions
-`rx(timeout: int) -> bytes` - Listens and decodes a message. Takes a timeout in seconds.
+
+`receive(timeout: float) -> bytes` - Listens and decodes a message. Takes a timeout in seconds.
 
 ## `DigitalTransmitter`
+
 DigitalTransmitter is instantiated with a mode and optional audio settings,
 and provides functionality for encoding and sending messages.
+
 ### Constructor Parameters
-`digital_mode`: (required, DigitalModes) Type of digital modulation to transmit.
+
+`baud_rate`: (required, int, 300-12000) Baud rate for this Transmitter
 
 `training_sequence_time`: (optional, float) Length of the training sequence in seconds.
 
 ### Member Functions
-`tx(data: bytes)`: Encodes and transmits a message
 
-`estimateTxTime(data_length: int) -> float`: Estimates time to transmit a message with a given length (in bytes).
+`transmit(data: bytes)`: Encodes and transmits a message
