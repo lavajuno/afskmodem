@@ -10,7 +10,7 @@ A software-defined Audio Frequency-Shift Keying modem designed for analog FM rad
 ### Sending a message:
 ```python
 from afskmodem import Transmitter
-t = DigitalTransmitter(1200)
+t = Transmitter(1200)
 t.transmit("Hello World!".encode("ascii", "ignore"))
 ```
 
@@ -25,7 +25,7 @@ print(recv_data.decode("ascii", "ignore"))
 ### Constructing a Transmitter with a custom training sequence:
 ```python
 from afskmodem import Transmitter
-t = DigitalTransmitter(1200, 1.5)
+t = Transmitter(1200, 1.5)
 ```
 
 ### Constructing a Receiver with a higher sensitivity:
