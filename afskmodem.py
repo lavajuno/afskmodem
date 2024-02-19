@@ -422,5 +422,5 @@ class Transmitter:
             else:
                 frames.extend(self.__mark_tone)
         frames.extend([0] * 4800)
-        self.__log.info("Transmitting " + str(len(data)) + " frames...")
+        self.__log.info("Transmitting " + str(len(frames)) + " frames...")
         self.__sound_out.play(frames)
