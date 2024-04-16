@@ -43,16 +43,23 @@ r = Receiver(1200, 14000, 11000)
 ### Writing to a .wav file with Transmitter:
 ```python
 from afskmodem import Transmitter
+
 t = Transmitter(1200)
-t.save("Hello World!".encode("ascii", "ignore"), "myfile.wav")
+t.save("Héellóo World!", "afsk.wav")
+
+# Content can be either str or bytes
 ```
 
 ### Reading from a .wav file with Receiver:
 ```python
 from afskmodem import Receiver
+
 r = Receiver(1200)
-recv_data = r.read("myfile.wav")
-print(recv_data.decode("ascii", "ignore"))
+recv_data = r.load("afsk.wav")
+assert recv_data == "Héellóo World!"
+
+# .load will return str wherever possible
+# otherwise it will return bytes which you can .decode yourself
 ```
 
 > Note: Input files for Receiver.read() must be 48khz 16-bit mono.
