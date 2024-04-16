@@ -399,7 +399,7 @@ class Receiver:
         return bytes(res)
     
     # Receives signal, decodes it, then returns it (or fails)
-    def receive(self, timeout: float) -> bytes:
+    def receive(self, timeout: float, string: bool = True) -> bytes|str:
         self.__log.info("Listening...")
         recv_audio = self.__listen(int(timeout * 48000))
         if(recv_audio == []):
@@ -412,10 +412,12 @@ class Receiver:
         dec_bits = ECC.decode(recv_bits)
         dec_bytes = self.__bitsToBytes(dec_bits)
         self.__log.debug("Decoded " + str(len(dec_bytes)) + " bytes.")
+        if(string):
+            return dec_bytes.decode('utf-8')
         return dec_bytes
     
     # Reads signal from a file, decodes it, then returns it (or fails)
-    def load(self, filename: str) -> str|bytes:
+    def load(self, filename: str, string: bool = True) -> bytes|str:
         recv_bits = self.__decodeBits(SoundInput.loadFromFile(filename))
         if(recv_bits == ""):
             self.__log.warn("No data.")
@@ -423,10 +425,9 @@ class Receiver:
         dec_bits = ECC.decode(recv_bits)
         dec_bytes = self.__bitsToBytes(dec_bits)
         self.__log.debug("Decoded " + str(len(dec_bytes)) + " bytes.")
-        try:
-            return dec_bytes.decode()
-        except Exception as error:
-            return dec_bytes
+        if(string):
+            return dec_bytes.decode('utf-8')
+        return dec_bytes
         
 """
     Transmitter manages a line to the default audio output device
@@ -468,7 +469,9 @@ class Transmitter:
         return frames
     
     # Transmits the given data.
-    def transmit(self, data: bytes): 
+    def transmit(self, data: str|bytes):
+        if isinstance(data, str):
+            data = data.encode('utf-8')
         self.__log.info("Transmitting " + str(len(data)) + " bytes...")
         frames: bytes = self.__getFrames(data)
         self.__log.info("Transmitting " + str(len(frames)) + " frames...")
