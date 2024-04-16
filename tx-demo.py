@@ -7,7 +7,7 @@ def main():
         print("Enter message string (ASCII):")
         userMessage = input()
         print("Transmitting...")
-        transmitter.transmit(userMessage.encode("ascii", "ignore"))
+        transmitter.transmit(userMessage)
         print("Done. (CTRL-C to exit)")
         print("")
 
