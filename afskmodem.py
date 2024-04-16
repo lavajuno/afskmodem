@@ -2,12 +2,15 @@
   afskmodem.py
   https://lavajuno.github.io/afskmodem
   Author: Juno Meifert
+  Modified: 2024-04-15
 """
 
 import pyaudio
+
+import wave
 from datetime import datetime
 
-# Log level (0: Info (Recommended), 1: Warn, 2: Error, 3: None)
+# Log level (0: Debug, 1: Info (Recommended), 2: Warn, 3: Error, 4: Fatal)
 LOG_LEVEL = 0
 
 """
@@ -21,19 +24,18 @@ class Log:
     def __print(self, level: int, message: str):
         if(level >= LOG_LEVEL):
             output = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            output += " (afskmodem) "
             match level:
                 case 1:
-                    output += "[ INFO ]  "
+                    output += " [ INFO ]  "
                 case 2:
-                    output += "[ WARN ]  "
+                    output += " [ WARN ]  "
                 case 3:
-                    output += "[ ERROR ] "
+                    output += " [ ERROR ] "
                 case 4:
-                    output += "[ FATAL ] "
+                    output += " [ FATAL ] "
                 case _:
-                    output += "[ DEBUG ] "
-            output += self.__class_name.ljust(20)
+                    output += " [ DEBUG ] "
+            output += self.__class_name.ljust(24)
             output += ": "
             output += message
             print(output)
@@ -188,23 +190,34 @@ class SoundInput:
     )
 
     # Starts the input stream
-    def start(self):
+    def start(self) -> None:
         self.__stream.start_stream()
 
     # Stops the input stream
-    def stop(self):
+    def stop(self) -> None:
         self.__stream.stop_stream()
-    
-    # Listens to input stream and returns a list of frames
-    def listen(self) -> list[int]:
-        frames: bytes = self.__stream.read(2048)
+
+    # Converts frames from bytes to a list of integers
+    def __convertFrames(frames: bytes) -> list[int]:
         res: list[int] = []
         for i in range(0, len(frames) - 1, 2):
             res.append(int.from_bytes(frames[i:i+2], "little", signed=True))
         return res
-
+    
+    # Listens to input stream and returns a list of frames
+    def listen(self) -> list[int]:
+        return SoundInput.__convertFrames(self.__stream.read(2048))
+    
+    # Loads a wav file and returns a list of frames
+    # Input file must be 48khz 16-bit mono
+    def loadFromFile(filename: str) -> list[int]:
+        with wave.open(filename, 'rb') as f:
+            return SoundInput.__convertFrames(
+                f.readframes(f.getnframes())
+            )
+    
     # Closes the input stream
-    def close(self):
+    def close(self) -> None:
         self.__stream.close()
 
 """
@@ -221,16 +234,34 @@ class SoundOutput:
                 output = True
         )
         self.__stream.start_stream()
-    
-    # Writes frames to the output stream and blocks
-    def play(self, frames: list[int]):
-        out_frames: bytearray = []
+
+    # Converts frames from a list of integers to bytes
+    def __convertFrames(frames: list[int]) -> bytes:
+        res: bytearray = []
         for i in range(0, len(frames) - 1, 2):
             frame = frames[i].to_bytes(2, 'little', signed=True)
-            out_frames.extend(frame * 2)
-        self.__stream.write(bytes(out_frames), len(frames),
-                            exception_on_underflow=False)
-
+            res.extend(frame * 2)
+        return bytes(res)
+    
+    # Writes frames to the output stream and blocks
+    def play(self, frames: list[int]) -> None:
+        self.__stream.write(
+            SoundOutput.__convertFrames(frames),
+            len(frames),
+            exception_on_underflow=False
+        )
+    
+    # Writes frames to a wav file
+    # Output file will be 48khz 16-bit mono
+    def writeToFile(filename: str, frames: list[int]) -> None:
+        with wave.open(filename, 'wb') as f:
+            f.setnchannels(1)
+            f.setsampwidth(2)
+            f.setframerate(48000)
+            f.writeframes(
+                SoundOutput.__convertFrames(frames)
+            )
+    
     # Closes the output stream
     def close(self):
         self.__stream.stop_stream()
@@ -250,7 +281,7 @@ class Receiver:
         self.__mark_tone: list[int] = Waveforms.getMarkTone(baud_rate)
         self.__training_cycle: list[int] = Waveforms.getTrainingCycle(baud_rate)
         self.__sound_in: SoundInput = SoundInput()
-        self.__log = Log("Receiver")
+        self.__log = Log("afskmodem.Receiver")
     
     # Amplifies a received signal
     def __amplify(self, chunk: list[int]) -> list[int]:
@@ -367,7 +398,7 @@ class Receiver:
             i += 8
         return bytes(res)
     
-    # Receives data and returns it (or fails)
+    # Receives signal, decodes it, then returns it (or fails)
     def receive(self, timeout: float) -> bytes:
         self.__log.info("Listening...")
         recv_audio = self.__listen(int(timeout * 48000))
@@ -382,6 +413,18 @@ class Receiver:
         dec_bytes = self.__bitsToBytes(dec_bits)
         self.__log.debug("Decoded " + str(len(dec_bytes)) + " bytes.")
         return dec_bytes
+    
+    # Reads signal from a file, decodes it, then returns it (or fails)
+    def read(self, filename: str) -> bytes:
+        recv_bits = self.__decodeBits(SoundInput.loadFromFile(filename))
+        if(recv_bits == ""):
+            self.__log.warn("No data.")
+            return b""
+        dec_bits = ECC.decode(recv_bits)
+        dec_bytes = self.__bitsToBytes(dec_bits)
+        self.__log.debug("Decoded " + str(len(dec_bytes)) + " bytes.")
+        return dec_bytes
+
 
 """
     Transmitter manages a line to the default audio output device
@@ -394,7 +437,7 @@ class Transmitter:
         self.__mark_tone = Waveforms.getMarkTone(baud_rate)
         self.__training_cycle = Waveforms.getTrainingCycle(baud_rate)
         self.__sound_out = SoundOutput()
-        self.__log = Log("Transmitter") 
+        self.__log = Log("afskmodem.Transmitter") 
     
     # Convert bytes to bits
     def __bytesToBits(self, b_in: bytes) -> str:
@@ -402,10 +445,8 @@ class Transmitter:
         for i in range(len(b_in)):
             bits += '{0:08b}'.format(b_in[i])
         return bits
-
-    # Transmits the given data.
-    def transmit(self, data: bytes): 
-        self.__log.info("Transmitting " + str(len(data)) + " bytes...")
+    
+    def __getFrames(self, data: bytes) -> bytes:
         frames: list[int] = []
         message_bits = self.__bytesToBits(data)
         ecc_bits = ECC.encode(message_bits)
@@ -422,5 +463,15 @@ class Transmitter:
             else:
                 frames.extend(self.__mark_tone)
         frames.extend([0] * 4800)
+        return frames
+    
+    # Transmits the given data.
+    def transmit(self, data: bytes): 
+        self.__log.info("Transmitting " + str(len(data)) + " bytes...")
+        frames: bytes = self.__getFrames(data)
         self.__log.info("Transmitting " + str(len(frames)) + " frames...")
         self.__sound_out.play(frames)
+
+    # Transmits the given data, saving the resulting audio to a .wav file.
+    def write(self, data: bytes, filename: str):
+        SoundOutput.writeToFile(filename, self.__getFrames(data))
