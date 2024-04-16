@@ -5,13 +5,13 @@ def main():
     print("AFSKmodem File Read Demo")
     while(True):
         print("Enter path to file to read (ex. \"./myfile.wav\"):")
-        rxData = receiver.read(input())
-        if(rxData == b""):
+        rxData = receiver.load(input(), True)
+        if(rxData == ""):
             print("Could not decode.")
         else:
             print("Transmission decoded:")
             print("")
-            print(rxData.decode("utf-8", "ignore"))
+            print(rxData)
             print("")
             print("Done. (CTRL-C to exit)")
             

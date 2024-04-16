@@ -6,11 +6,11 @@ def main():
     while(True):
         print("Waiting for message...")
         while(True):
-            rxData = receiver.receive(100)
-            if(rxData != b""):
+            rxData = receiver.receive(100, True)
+            if(rxData != ""):
                 print("Transmission received:")
                 print("")
-                print(rxData.decode("utf-8", "ignore"))
+                print(rxData)
                 print("")
                 print("Done. (CTRL-C to exit)")
             break
