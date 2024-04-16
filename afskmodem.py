@@ -415,7 +415,7 @@ class Receiver:
         return dec_bytes
     
     # Reads signal from a file, decodes it, then returns it (or fails)
-    def read(self, filename: str) -> bytes:
+    def load(self, filename: str) -> str|bytes:
         recv_bits = self.__decodeBits(SoundInput.loadFromFile(filename))
         if(recv_bits == ""):
             self.__log.warn("No data.")
@@ -423,9 +423,11 @@ class Receiver:
         dec_bits = ECC.decode(recv_bits)
         dec_bytes = self.__bitsToBytes(dec_bits)
         self.__log.debug("Decoded " + str(len(dec_bytes)) + " bytes.")
-        return dec_bytes
-
-
+        try:
+            return dec_bytes.decode()
+        except Exception as error:
+            return dec_bytes
+        
 """
     Transmitter manages a line to the default audio output device
     and allows you to send data over it.
@@ -473,5 +475,7 @@ class Transmitter:
         self.__sound_out.play(frames)
 
     # Transmits the given data, saving the resulting audio to a .wav file.
-    def write(self, data: bytes, filename: str):
+    def save(self, data: str|bytes, filename: str):
+        if isinstance(data, str):
+            data = data.encode('utf-8')
         SoundOutput.writeToFile(filename, self.__getFrames(data))
