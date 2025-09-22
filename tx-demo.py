@@ -1,5 +1,6 @@
 from afskmodem import Transmitter
 
+
 def main():
     transmitter = Transmitter(1200)
     print("AFSKmodem TX Demo")
@@ -11,9 +12,10 @@ def main():
         print("Done. (CTRL-C to exit)")
         print("")
 
-if(__name__ == "__main__"):
+
+if __name__ == "__main__":
     try:
         main()
-    except(KeyboardInterrupt):
+    except KeyboardInterrupt:
         print("CTRL-C")
         pass
